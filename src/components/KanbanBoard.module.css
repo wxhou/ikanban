@@ -1,0 +1,21 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.board {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: flex-start;
+  flex: 1;
+  min-height: 0;
+}
+
+.board > * {
+  flex-shrink: 0;
+}

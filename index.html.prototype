@@ -1,0 +1,914 @@
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>项目看板 — 全局管理</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --fg: #111111;
+      --fg-2: #333333;
+      --muted: #6b6b6b;
+      --meta: #9a9a9a;
+      --border: #e5e5e5;
+      --border-soft: #f0f0f0;
+      --accent: #2f6feb;
+      --accent-on: #ffffff;
+      --accent-hover: #1a5ad8;
+      --accent-active: #1440a8;
+      --success: #17a34a;
+      --success-bg: #dcfce7;
+      --warn: #eab308;
+      --warn-bg: #fef9c3;
+      --danger: #dc2626;
+      --danger-bg: #fee2e2;
+      --surface-warm: #f8f8f8;
+      --font-display: "Inter", -apple-system, system-ui, sans-serif;
+      --font-body: "Inter", -apple-system, system-ui, sans-serif;
+      --font-mono: ui-monospace, "JetBrains Mono", monospace;
+      --text-xs: 12px;
+      --text-sm: 14px;
+      --text-base: 16px;
+      --text-lg: 20px;
+      --text-xl: 24px;
+      --text-2xl: 32px;
+      --text-3xl: 48px;
+      --leading-body: 1.5;
+      --leading-tight: 1.2;
+      --tracking-display: -0.01em;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --elev-raised: 0 2px 8px color-mix(in oklab, var(--fg), transparent 92%);
+      --motion-fast: 150ms;
+      --motion-base: 200ms;
+      --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-family: var(--font-body); font-size: var(--text-base); color: var(--fg); background: var(--bg); line-height: var(--leading-body); -webkit-font-smoothing: antialiased; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+    input, textarea, select { font-family: inherit; font-size: inherit; }
+    a { color: var(--accent); text-decoration: none; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; transition: background 0.2s; }
+    :hover::-webkit-scrollbar-thumb { background: var(--border); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent), transparent 70%); border-radius: var(--radius-sm); }
+
+    .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ── Top Nav ── */
+    .topnav { display: flex; align-items: center; gap: var(--space-4); padding: 0 var(--space-6); height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .topnav-brand { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-base); font-weight: 600; color: var(--fg); text-decoration: none; }
+    .topnav-brand:hover { text-decoration: none; }
+    .topnav-logo { width: 28px; height: 28px; background: var(--accent); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .topnav-logo svg { color: white; }
+    .topnav-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .topnav-project { font-size: var(--text-sm); color: var(--muted); }
+    .topnav-spacer { flex: 1; }
+    .nav-pill { display: flex; gap: var(--space-1); background: var(--bg); border-radius: var(--radius-sm); padding: 3px; }
+    .nav-pill-btn { padding: 5px 14px; font-size: var(--text-sm); font-weight: 500; color: var(--muted); border-radius: 5px; transition: all var(--motion-fast) var(--ease-standard); white-space: nowrap; }
+    .nav-pill-btn:hover { background: var(--surface); color: var(--fg); }
+    .nav-pill-btn.active { background: var(--accent); color: var(--accent-on); }
+    .topnav-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: var(--text-sm); font-weight: 600; flex-shrink: 0; }
+
+    /* ── Filter Bar ── */
+    .filter-bar { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-6); background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .filter-pills { display: flex; gap: var(--space-2); }
+    .filter-pill { padding: 4px 12px; font-size: var(--text-sm); font-weight: 500; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: var(--surface); transition: all var(--motion-fast) var(--ease-standard); cursor: pointer; }
+    .filter-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-pill.active { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+    .filter-spacer { flex: 1; }
+    .filter-count { font-size: var(--text-sm); color: var(--muted); white-space: nowrap; }
+    .search-wrap { position: relative; display: flex; align-items: center; }
+    .search-icon { position: absolute; left: 10px; color: var(--muted); pointer-events: none; display: flex; }
+    .search-icon svg { width: 14px; height: 14px; }
+    .search-input { padding: 6px 10px 6px 32px; font-size: var(--text-sm); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--fg); width: 180px; transition: all var(--motion-fast) var(--ease-standard); outline: none; }
+    .search-input::placeholder { color: var(--meta); }
+    .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,111,235,0.10); width: 220px; }
+    .search-clear { position: absolute; right: 8px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; transition: all var(--motion-fast); }
+    .search-clear:hover { background: var(--bg); color: var(--fg); }
+    .search-clear svg { width: 10px; height: 10px; }
+    .btn { display: inline-flex; align-items: center; gap: var(--space-2); padding: 7px 14px; font-size: var(--text-sm); font-weight: 500; border-radius: var(--radius-sm); transition: all var(--motion-fast) var(--ease-standard); white-space: nowrap; }
+    .btn-primary { background: var(--accent); color: var(--accent-on); }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { border: 1px solid var(--border); color: var(--fg); background: var(--surface); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-ghost { color: var(--muted); padding: 6px 10px; }
+    .btn-ghost:hover { background: var(--bg); color: var(--fg); }
+    .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ── Kanban Board ── */
+    .kanban-wrap { display: flex; flex: 1; overflow: hidden; }
+    .kanban-board { display: flex; gap: var(--space-4); padding: var(--space-5) var(--space-6); overflow-x: auto; overflow-y: hidden; align-items: flex-start; flex: 1; min-height: 0; }
+    .kanban-board > * { flex-shrink: 0; }
+
+    .kcol { width: 300px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; max-height: calc(100vh - 130px); transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard); }
+    .kcol.drop-target { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,111,235,0.15); }
+    .kcol-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .kcol-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .kcol-title { font-size: var(--text-sm); font-weight: 600; flex: 1; }
+    .kcol-count { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+    .kcol-body { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; flex: 1; min-height: 0; }
+    .kcol-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-8) var(--space-4); color: var(--meta); font-size: var(--text-sm); text-align: center; }
+    .kcol-empty-icon { width: 32px; height: 32px; margin-bottom: var(--space-2); color: var(--border); }
+    .kcol-footer { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); flex-shrink: 0; }
+    .add-card-btn { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); font-size: var(--text-sm); padding: var(--space-2) var(--space-2); border-radius: var(--radius-sm); width: 100%; transition: all var(--motion-fast) var(--ease-standard); }
+    .add-card-btn:hover { background: var(--surface); color: var(--accent); }
+    .add-card-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ── Task Card ── */
+    .task-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); cursor: grab; transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard), opacity var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); user-select: none; }
+    .task-card:hover { box-shadow: var(--elev-raised); transform: translateY(-1px); border-color: color-mix(in oklab, var(--border), var(--fg) 15%); }
+    .task-card.dragging { opacity: 0.45; transform: rotate(1.5deg); box-shadow: var(--elev-raised); }
+    .task-card.drag-over { border-color: var(--accent); }
+    .card-top { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-2); }
+    .priority-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .card-title { font-size: var(--text-sm); font-weight: 600; color: var(--fg); flex: 1; line-height: 1.4; }
+    .card-body { margin-bottom: var(--space-2); }
+    .card-desc { font-size: var(--text-xs); color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--space-2); }
+    .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+    .tag-jiafang { background: #dbeafe; color: #1d4ed8; }
+    .tag-internal { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .tag-requester { background: #fef9c3; color: #854d0e; }
+    .card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: var(--space-2); border-top: 1px solid var(--border-soft); }
+    .card-meta { display: flex; align-items: center; gap: var(--space-3); }
+    .card-meta-item { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); }
+    .card-meta-item svg { width: 11px; height: 11px; }
+    .card-assignee { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: white; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid var(--surface); }
+
+    /* ── Modal ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: var(--space-4); }
+    .modal { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--border); }
+    .modal-title { font-size: var(--text-lg); font-weight: 700; }
+    .modal-close { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all var(--motion-fast) var(--ease-standard); }
+    .modal-close:hover { background: var(--bg); color: var(--fg); }
+    .modal-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+    .form-row { display: flex; flex-direction: column; gap: var(--space-2); }
+    .form-label { font-size: var(--text-sm); font-weight: 600; color: var(--fg); }
+    .form-hint { font-size: var(--text-xs); color: var(--muted); }
+    .form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--text-sm); color: var(--fg); background: var(--surface); transition: border-color var(--motion-fast) var(--ease-standard); outline: none; }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,111,235,0.12); }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    select.form-input { cursor: pointer; }
+    .form-row-inline { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .modal-foot { display: flex; gap: var(--space-3); justify-content: flex-end; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border); }
+    .tag-select { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+    .tag-option { display: flex; align-items: center; gap: var(--space-2); padding: 4px 10px; border-radius: 999px; font-size: var(--text-sm); border: 1px solid var(--border); cursor: pointer; transition: all var(--motion-fast) var(--ease-standard); }
+    .tag-option:hover { border-color: var(--accent); color: var(--accent); }
+    .tag-option.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+    .assignee-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .assignee-chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: var(--text-sm); border: 1px solid var(--border); cursor: pointer; transition: all var(--motion-fast) var(--ease-standard); background: var(--surface); }
+    .assignee-chip:hover { border-color: var(--accent); }
+    .assignee-chip.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+
+    /* ── Dashboard ── */
+    .dashboard { padding: var(--space-6); overflow-y: auto; flex: 1; }
+    .db-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
+    .db-title { font-size: var(--text-2xl); font-weight: 700; letter-spacing: var(--tracking-display); margin-bottom: 4px; }
+    .db-sub { font-size: var(--text-sm); color: var(--muted); }
+    .db-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); position: relative; overflow: hidden; }
+    .stat-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-card:nth-child(1)::before { background: var(--muted); }
+    .stat-card:nth-child(2)::before { background: var(--accent); }
+    .stat-card:nth-child(3)::before { background: var(--warn); }
+    .stat-card:nth-child(4)::before { background: var(--success); }
+    .stat-label { font-size: var(--text-xs); color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2); }
+    .stat-value { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .stat-change { font-size: var(--text-xs); margin-top: var(--space-2); }
+    .stat-change.up { color: var(--success); }
+    .stat-change.neutral { color: var(--muted); }
+    .stat-change.warn { color: var(--danger); }
+    .db-progress-section { margin-bottom: var(--space-5); }
+    .progress-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+    .progress-label { font-size: var(--text-sm); font-weight: 500; width: 80px; flex-shrink: 0; }
+    .progress-track { flex: 1; height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width 0.4s var(--ease-standard); }
+    .progress-pct { font-size: var(--text-xs); font-variant-numeric: tabular-nums; color: var(--muted); width: 36px; text-align: right; flex-shrink: 0; }
+    .db-grid { display: grid; grid-template-columns: 1fr 340px; gap: var(--space-5); }
+    .db-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+    .db-sec-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
+    .db-sec-title { font-size: var(--text-sm); font-weight: 700; }
+    .db-sec-body { padding: 0; }
+    .task-table { width: 100%; border-collapse: collapse; }
+    .task-table th { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding: var(--space-3) var(--space-4); text-align: left; border-bottom: 1px solid var(--border); background: var(--bg); }
+    .task-table td { padding: var(--space-3) var(--space-4); font-size: var(--text-sm); border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+    .task-table tr:last-child td { border-bottom: none; }
+    .task-table tr:hover td { background: var(--bg); }
+    .td-title { font-weight: 500; max-width: 240px; }
+    .td-title-inner { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+    .priority-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+    .pb-high { background: var(--danger-bg); color: var(--danger); }
+    .pb-medium { background: var(--warn-bg); color: #854d0e; }
+    .pb-low { background: var(--success-bg); color: var(--success); }
+    .source-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+    .sb-jiafang { background: #dbeafe; color: #1d4ed8; }
+    .sb-internal { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .sb-requester { background: #fef9c3; color: #854d0e; }
+    .assignee-mini { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .no-data { padding: var(--space-8); text-align: center; color: var(--muted); font-size: var(--text-sm); }
+    .export-bar { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); }
+    .export-title { font-size: var(--text-sm); font-weight: 700; }
+    .export-desc { font-size: var(--text-xs); color: var(--muted); line-height: 1.5; }
+    .export-btn { display: flex; align-items: center; gap: var(--space-2); padding: 8px 14px; background: var(--accent); color: var(--accent-on); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 500; transition: background var(--motion-fast) var(--ease-standard); }
+    .export-btn:hover { background: var(--accent-hover); }
+    .export-btn svg { width: 14px; height: 14px; }
+
+    /* ── Color dots per column ── */
+    .dot-todo { background: var(--meta); }
+    .dot-inprogress { background: var(--accent); }
+    .dot-review { background: var(--warn); }
+    .dot-blocked { background: var(--danger); }
+    .dot-done { background: var(--success); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1200px) {
+      .db-stats { grid-template-columns: repeat(2, 1fr); }
+      .kcol { width: 260px; }
+    }
+    @media (max-width: 900px) {
+      .db-grid { grid-template-columns: 1fr; }
+      .form-row-inline { grid-template-columns: 1fr; }
+      .filter-bar { flex-wrap: wrap; }
+      .topnav-project, .topnav-divider { display: none; }
+      .kcol { width: 240px; }
+    }
+    @media (max-width: 640px) {
+      .db-stats { grid-template-columns: 1fr; }
+      .stat-value { font-size: 32px; }
+      .kcol { width: 220px; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+/* ═══════════════════════════════════════════
+   DATA STORE (simulated — swap for API)
+═══════════════════════════════════════════ */
+const TEAM_MEMBERS = ["张三", "李四", "王五", "赵六", "钱七", "孙八"];
+const JIAFANG_SOURCES = ["需求对接人", "项目对接人"];
+
+const INITIAL_TASKS = [
+  { id: 1, title: "完成首页 UI 设计稿", desc: "参照 Figma 设计规范，完成甲方要求的首页 UI 初稿", status: "done", priority: "high", source: "jiafang", requester: "需求对接人", assignees: ["张三"], due: "2026-05-10", created: "2026-05-01" },
+  { id: 2, title: "登录模块接口对接", desc: "与甲方 SSO 系统对接，完成 OAuth 认证流程", status: "inprogress", priority: "high", source: "jiafang", requester: "项目对接人", assignees: ["李四", "王五"], due: "2026-05-18", created: "2026-05-05" },
+  { id: 3, title: "数据库结构设计", desc: "根据需求文档设计项目数据库 ER 图", status: "review", priority: "medium", source: "internal", requester: null, assignees: ["赵六"], due: "2026-05-20", created: "2026-05-03" },
+  { id: 4, title: "导出功能 BUG 修复", desc: "Excel 导出时数字精度丢失问题", status: "blocked", priority: "high", source: "internal", requester: null, assignees: ["王五"], due: "2026-05-15", created: "2026-05-08" },
+  { id: 5, title: "集成测试报告撰写", desc: "汇总各模块测试结果，形成整体报告", status: "todo", priority: "medium", source: "jiafang", requester: "需求对接人", assignees: ["张三"], due: "2026-05-28", created: "2026-05-10" },
+  { id: 6, title: "部署文档编写", desc: "整理部署步骤与常见问题处理方案", status: "todo", priority: "low", source: "internal", requester: null, assignees: ["钱七"], due: "2026-06-01", created: "2026-05-11" },
+  { id: 7, title: "性能优化压测", desc: "压测 500 并发下的接口响应时间", status: "inprogress", priority: "medium", source: "internal", requester: null, assignees: ["李四"], due: "2026-05-22", created: "2026-05-09" },
+  { id: 8, title: "第三方支付对接", desc: "支付宝/微信支付接口集成", status: "todo", priority: "high", source: "jiafang", requester: "项目对接人", assignees: ["孙八"], due: "2026-05-25", created: "2026-05-12" },
+  { id: 9, title: "上线审批流程确认", desc: "与甲方确认正式环境上线审批流程", status: "review", priority: "high", source: "jiafang", requester: "项目对接人", assignees: ["张三", "赵六"], due: "2026-05-17", created: "2026-05-06" },
+  { id: 10, title: "项目周报模板", desc: "制作标准化周报模板供甲方每周汇报使用", status: "done", priority: "low", source: "jiafang", requester: "需求对接人", assignees: ["钱七"], due: "2026-05-08", created: "2026-05-01" },
+];
+
+const COLUMNS = [
+  { id: "todo", label: "待办" },
+  { id: "inprogress", label: "进行中" },
+  { id: "review", label: "审核中" },
+  { id: "blocked", label: "已阻塞" },
+  { id: "done", label: "已完成" },
+];
+
+/* ═══════════════════════════════════════════
+   ICONS — inline SVG, 16×16 viewBox, strokeWidth 1.5
+═══════════════════════════════════════════ */
+const IconPlus = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <path d="M8 3v10M3 8h10"/>
+  </svg>
+);
+const IconSearch = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <circle cx="7" cy="7" r="4"/>
+    <path d="M10.5 10.5 14 14"/>
+  </svg>
+);
+const IconX = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/>
+  </svg>
+);
+const IconCalendar = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <rect x="2" y="3" width="12" height="11" rx="1.5"/>
+    <path d="M2 7h12"/>
+    <path d="M5 2v3M11 2v3"/>
+  </svg>
+);
+const IconUser = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <circle cx="8" cy="5.5" r="3"/>
+    <path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
+  </svg>
+);
+const IconDownload = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 2v9M4.5 8 8 12l3.5-4"/>
+    <path d="M2 13h12"/>
+  </svg>
+);
+const IconBoard = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <rect x="2" y="2" width="4.5" height="12" rx="1"/>
+    <rect x="9.5" y="2" width="4.5" height="8" rx="1"/>
+  </svg>
+);
+const IconDash = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <rect x="2" y="2" width="12" height="12" rx="2"/>
+    <path d="M2 6h12M2 10h12"/>
+  </svg>
+);
+const IconEdit = () => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11.5 2.5a2 2 0 0 1 2.834.834l.166.166-7 7-.166.166a2 2 0 0 1-.834-.166z"/>
+    <path d="M10 4 12 6"/>
+  </svg>
+);
+
+/* ═══════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════ */
+function getInitials(name) {
+  return name.slice(0, 2);
+}
+function getAssigneeColor(name) {
+  const colors = ["#2f6feb","#f97316","#7c3aed","#16a34a","#dc2626","#0891b2"];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+function formatDate(d) {
+  if (!d) return "—";
+  return d.slice(5).replace("-", "/");
+}
+function exportToExcel(tasks) {
+  const headers = ["任务名称", "描述", "状态", "优先级", "来源", "对接人", "负责人", "截止日期", "创建日期"];
+  const statusMap = { todo:"待办", inprogress:"进行中", review:"审核中", blocked:"已阻塞", done:"已完成" };
+  const priorityMap = { high:"高", medium:"中", low:"低" };
+  const sourceMap = { jiafang:"甲方", internal:"内部" };
+  const rows = tasks.map(t => [
+    t.title, t.desc, statusMap[t.status] || t.status,
+    priorityMap[t.priority] || t.priority,
+    sourceMap[t.source] || t.source,
+    t.requester || "—",
+    t.assignees.join(", "),
+    t.due || "—",
+    t.created || "—"
+  ]);
+  const csvContent = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const BOM = "\uFEFF";
+  const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `项目看板_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ═══════════════════════════════════════════
+   TOP NAV
+═══════════════════════════════════════════ */
+function TopNav({ view, onViewChange }) {
+  return (
+    <nav className="topnav">
+      <a className="topnav-brand" href="#">
+        <div className="topnav-logo">
+          <svg viewBox="0 0 16 16" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+            <rect x="2" y="2" width="5" height="12" rx="1"/>
+            <rect x="9" y="2" width="5" height="8" rx="1"/>
+          </svg>
+        </div>
+        <span>项目看板</span>
+      </a>
+      <div className="topnav-divider" />
+      <span className="topnav-project">智慧城市平台 · v2.0</span>
+      <div className="topnav-spacer" />
+      <div className="nav-pill">
+        <button className={`nav-pill-btn${view === "kanban" ? " active" : ""}`} onClick={() => onViewChange("kanban")}>
+          <IconBoard /> 看板
+        </button>
+        <button className={`nav-pill-btn${view === "dashboard" ? " active" : ""}`} onClick={() => onViewChange("dashboard")}>
+          <IconDash /> 汇报
+        </button>
+      </div>
+      <div className="topnav-divider" />
+      <div className="topnav-avatar">PM</div>
+    </nav>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   FILTER BAR
+═══════════════════════════════════════════ */
+const FILTER_TABS = [
+  { id: "all", label: "全部" },
+  { id: "jiafang", label: "甲方任务" },
+  { id: "internal", label: "内部任务" },
+  { id: "mine", label: "只看我的" },
+];
+
+function FilterBar({ filter, onFilterChange, taskCount, filteredCount, search, onSearchChange }) {
+  return (
+    <div className="filter-bar">
+      <div className="filter-pills">
+        {FILTER_TABS.map(tab => (
+          <button key={tab.id} className={`filter-pill${filter === tab.id ? " active" : ""}`} onClick={() => onFilterChange(tab.id)}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="filter-spacer" />
+      <div className="search-wrap">
+        <span className="search-icon"><IconSearch /></span>
+        <input
+          className="search-input"
+          placeholder="搜索任务…"
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+        />
+        {search && (
+          <span className="search-clear" onClick={() => onSearchChange("")}>
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+          </span>
+        )}
+      </div>
+      <span className="filter-count">
+        {filteredCount === taskCount ? `${taskCount} 个任务` : `${filteredCount} / ${taskCount} 个任务`}
+      </span>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   TASK CARD
+═══════════════════════════════════════════ */
+function TaskCard({ task, columnStatus, onEdit, onDragStart, onDragEnd, onDragOver, onDrop }) {
+  const priorityColor = { high: "var(--danger)", medium: "var(--warn)", low: "var(--success)" };
+  const sourceLabel = { jiafang: "甲方", internal: "内部" };
+  return (
+    <div
+      className="task-card"
+      draggable
+      onDragStart={e => { e.dataTransfer.setData("taskId", String(task.id)); onDragStart(task.id); }}
+      onDragEnd={onDragEnd}
+      onDragOver={e => { e.preventDefault(); onDragOver(task.id); }}
+      onDrop={e => { e.preventDefault(); e.stopPropagation(); onDrop(columnStatus); }}
+      onDoubleClick={() => onEdit(task)}
+    >
+      <div className="card-top">
+        <span className="priority-dot" style={{ background: priorityColor[task.priority] }} />
+        <span className="card-title">{task.title}</span>
+      </div>
+      {task.desc && <div className="card-body"><div className="card-desc">{task.desc}</div></div>}
+      <div className="card-tags">
+        <span className={`tag tag-${task.source}`}>{sourceLabel[task.source]}</span>
+        {task.requester && <span className="tag tag-requester">{task.requester}</span>}
+      </div>
+      <div className="card-footer">
+        <div className="card-meta">
+          <span className="card-meta-item"><IconCalendar /> {formatDate(task.due)}</span>
+        </div>
+        <div style={{ display: "flex", marginLeft: "auto" }}>
+          {task.assignees.slice(0, 3).map((a, i) => (
+            <div key={i} className="card-assignee" style={{ background: getAssigneeColor(a), marginLeft: i > 0 ? "-6px" : 0, zIndex: 10 - i }}>
+              {getInitials(a)}
+            </div>
+          ))}
+          {task.assignees.length > 3 && (
+            <div className="card-assignee" style={{ background: "var(--muted)", marginLeft: "-6px" }}>+{task.assignees.length - 3}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   KANBAN COLUMN
+═══════════════════════════════════════════ */
+function KanbanColumn({ col, tasks, onAddTask, onEditTask, onDragStart, onDragEnd, onDragOver, onDrop, dragOverId, dragId }) {
+  return (
+    <div className={`kcol${dragOverId && dragId && dragId !== dragOverId ? " drop-target" : ""}`}>
+      <div className="kcol-head">
+        <span className={`kcol-dot dot-${col.id}`} />
+        <span className="kcol-title">{col.label}</span>
+        <span className="kcol-count">{tasks.length}</span>
+      </div>
+      <div className="kcol-body"
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); e.stopPropagation(); onDrop(col.id); }}
+      >
+        {tasks.length === 0 ? (
+          <div className="kcol-empty">
+            <svg className="kcol-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M12 8v8M8 12h8"/>
+            </svg>
+            暂无任务
+          </div>
+        ) : tasks.map(task => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            columnStatus={col.id}
+            onEdit={onEditTask}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            dragOverId={dragOverId}
+          />
+        ))}
+      </div>
+      <div className="kcol-footer">
+        <button className="add-card-btn" onClick={() => onAddTask(col.id)}>
+          <IconPlus /> 添加任务
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   KANBAN BOARD
+═══════════════════════════════════════════ */
+function KanbanBoard({ tasks, setTasks, onEditTask }) {
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [dragId, setDragId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const filtered = useMemo(() => {
+    return tasks.filter(t => {
+      if (filter === "jiafang") return t.source === "jiafang";
+      if (filter === "internal") return t.source === "internal";
+      if (filter === "mine") return t.assignees.includes("张三");
+      return true;
+    }).filter(t => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return t.title.toLowerCase().includes(q) || (t.desc && t.desc.toLowerCase().includes(q)) || (t.requester && t.requester.includes(q));
+    });
+  }, [tasks, filter, search]);
+
+  const tasksByStatus = useMemo(() => {
+    const map = {};
+    COLUMNS.forEach(c => { map[c.id] = filtered.filter(t => t.status === c.id); });
+    return map;
+  }, [filtered]);
+
+  const handleDragStart = useCallback((id) => setDragId(id), []);
+  const handleDragEnd = useCallback(() => { setDragId(null); setDragOverId(null); }, []);
+  const handleDragOver = useCallback((id) => setDragOverId(id), []);
+  const handleDrop = useCallback((targetStatus) => {
+    if (!dragId) return;
+    setTasks(prev => prev.map(t => t.id === dragId ? { ...t, status: targetStatus } : t));
+    setDragId(null); setDragOverId(null);
+  }, [dragId, setTasks]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+      <FilterBar filter={filter} onFilterChange={setFilter} taskCount={tasks.length} filteredCount={filtered.length} search={search} onSearchChange={setSearch} />
+      <div className="kanban-wrap">
+        <div className="kanban-board">
+          {COLUMNS.map(col => (
+            <KanbanColumn
+              key={col.id}
+              col={col}
+              tasks={tasksByStatus[col.id]}
+              onAddTask={(status) => onEditTask({ id: null, status })}
+              onEditTask={onEditTask}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              dragOverId={dragOverId}
+              dragId={dragId}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   TASK MODAL
+═══════════════════════════════════════════ */
+function TaskModal({ task, columns, teamMembers, jiafangSources, onSave, onClose }) {
+  const isNew = !task.id;
+  const [form, setForm] = useState({
+    title: task.title || "",
+    desc: task.desc || "",
+    status: task.status || "todo",
+    priority: task.priority || "medium",
+    source: task.source || "internal",
+    requester: task.requester || "",
+    assignees: task.assignees || [],
+    due: task.due || "",
+  });
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const toggleAssignee = (name) => {
+    setForm(f => ({
+      ...f,
+      assignees: f.assignees.includes(name) ? f.assignees.filter(a => a !== name) : [...f.assignees, name]
+    }));
+  };
+  const handleSave = () => {
+    if (!form.title.trim()) return;
+    onSave({ ...task, ...form });
+  };
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-head">
+          <h2 className="modal-title">{isNew ? "新建任务" : "编辑任务"}</h2>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <div className="modal-body">
+          <div className="form-row">
+            <label className="form-label">任务标题 *</label>
+            <input className="form-input" placeholder="简要描述任务内容" value={form.title} onChange={e => set("title", e.target.value)} autoFocus />
+          </div>
+          <div className="form-row">
+            <label className="form-label">详细描述</label>
+            <textarea className="form-input" placeholder="补充背景、要求、注意事项…" value={form.desc} onChange={e => set("desc", e.target.value)} />
+          </div>
+          <div className="form-row-inline">
+            <div className="form-row">
+              <label className="form-label">状态</label>
+              <select className="form-input" value={form.status} onChange={e => set("status", e.target.value)}>
+                {columns.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className="form-row">
+              <label className="form-label">优先级</label>
+              <select className="form-input" value={form.priority} onChange={e => set("priority", e.target.value)}>
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <label className="form-label">任务来源</label>
+            <div className="tag-select">
+              {[{ id: "jiafang", label: "甲方任务" }, { id: "internal", label: "内部任务" }].map(opt => (
+                <button key={opt.id} type="button"
+                  className={`tag-option${form.source === opt.id ? " selected" : ""}`}
+                  onClick={() => set("source", opt.id)}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {form.source === "jiafang" && (
+            <div className="form-row">
+              <label className="form-label">甲方对接人</label>
+              <div className="tag-select">
+                {jiafangSources.map(src => (
+                  <button key={src} type="button"
+                    className={`tag-option${form.requester === src ? " selected" : ""}`}
+                    onClick={() => set("requester", form.requester === src ? "" : src)}>
+                    {src}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="form-row">
+            <label className="form-label">负责人 <span style={{ fontWeight: 400, color: "var(--muted)" }}>（可多选）</span></label>
+            <div className="assignee-grid">
+              {teamMembers.map(name => (
+                <button key={name} type="button"
+                  className={`assignee-chip${form.assignees.includes(name) ? " selected" : ""}`}
+                  onClick={() => toggleAssignee(name)}>
+                  <div style={{ width: 16, height: 16, borderRadius: "50%", background: getAssigneeColor(name), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "white", fontWeight: 700 }}>{getInitials(name)}</div>
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="form-row">
+            <label className="form-label">截止日期</label>
+            <input className="form-input" type="date" value={form.due} onChange={e => set("due", e.target.value)} />
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button className="btn btn-secondary" onClick={onClose}>取消</button>
+          <button className="btn btn-primary" onClick={handleSave}>{isNew ? "创建任务" : "保存修改"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════ */
+function Dashboard({ tasks }) {
+  const total = tasks.length;
+  const done = tasks.filter(t => t.status === "done").length;
+  const inprogress = tasks.filter(t => t.status === "inprogress").length;
+  const blocked = tasks.filter(t => t.status === "blocked").length;
+  const jiafang = tasks.filter(t => t.source === "jiafang").length;
+  const jiafangDone = tasks.filter(t => t.source === "jiafang" && t.status === "done").length;
+  const internal = tasks.filter(t => t.source === "internal").length;
+  const internalDone = tasks.filter(t => t.source === "internal" && t.status === "done").length;
+  const completion = total > 0 ? Math.round(done / total * 100) : 0;
+  const jiafangPct = jiafang > 0 ? Math.round(jiafangDone / jiafang * 100) : 0;
+  const internalPct = internal > 0 ? Math.round(internalDone / internal * 100) : 0;
+  const statusMap = { todo:"待办", inprogress:"进行中", review:"审核中", blocked:"已阻塞", done:"已完成" };
+  const priorityMap = { high:"高", medium:"中", low:"低" };
+  const sourceMap = { jiafang:"甲方", internal:"内部" };
+  return (
+    <div className="dashboard">
+      <div className="db-header">
+        <div>
+          <h1 className="db-title">项目全局概览</h1>
+          <p className="db-sub">智慧城市平台 v2.0 · 数据更新于 {new Date().toLocaleDateString("zh-CN")}</p>
+        </div>
+      </div>
+
+      <div className="db-stats">
+        <div className="stat-card">
+          <div className="stat-label">总任务数</div>
+          <div className="stat-value">{total}</div>
+          <div className="stat-change neutral">全部任务</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">完成率</div>
+          <div className="stat-value">{completion}<span style={{ fontSize: "var(--text-xl)", fontWeight: 500 }}>%</span></div>
+          <div className="stat-change up">已完成 {done} 项任务</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">进行中</div>
+          <div className="stat-value">{inprogress}</div>
+          <div className="stat-change neutral">项任务推进中</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">已阻塞</div>
+          <div className="stat-value">{blocked}</div>
+          <div className={blocked > 0 ? "stat-change warn" : "stat-change neutral"}>{blocked > 0 ? `需关注 ${blocked} 项阻塞` : "无阻塞项"}</div>
+        </div>
+      </div>
+
+      <div className="db-grid">
+        <div className="db-section">
+          <div className="db-sec-head">
+            <span className="db-sec-title">任务清单</span>
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--muted)" }}>{total} 个任务</span>
+          </div>
+          <div className="db-sec-body" style={{ maxHeight: 480, overflowY: "auto" }}>
+            <table className="task-table">
+              <thead>
+                <tr>
+                  <th>任务</th>
+                  <th>状态</th>
+                  <th>优先级</th>
+                  <th>来源</th>
+                  <th>负责人</th>
+                  <th>截止</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map(t => (
+                  <tr key={t.id}>
+                    <td className="td-title">
+                      <div className="td-title-inner">{t.title}</div>
+                    </td>
+                    <td>
+                      <span className="status-dot" style={{ background: { todo: "var(--meta)", inprogress: "var(--accent)", review: "var(--warn)", blocked: "var(--danger)", done: "var(--success)" }[t.status] }} />
+                      {statusMap[t.status]}
+                    </td>
+                    <td><span className={`priority-badge pb-${t.priority}`}>{priorityMap[t.priority]}</span></td>
+                    <td><span className={`source-badge sb-${t.source}`}>{sourceMap[t.source]}{t.requester ? ` · ${t.requester}` : ""}</span></td>
+                    <td>
+                      <div style={{ display: "flex" }}>
+                        {t.assignees.slice(0, 2).map((a, i) => (
+                          <div key={i} className="assignee-mini" style={{ background: getAssigneeColor(a), marginLeft: i > 0 ? "-5px" : 0 }} title={a}>{getInitials(a)}</div>
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{ color: "var(--muted)", fontSize: "var(--text-xs)" }}>{formatDate(t.due)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+          <div className="db-section">
+            <div className="db-sec-head">
+              <span className="db-sec-title">完成进度</span>
+            </div>
+            <div style={{ padding: "var(--space-5)" }}>
+              <div className="progress-row">
+                <span className="progress-label">甲方任务</span>
+                <div className="progress-track"><div className="progress-fill" style={{ width: `${jiafangPct}%`, background: "var(--accent)" }} /></div>
+                <span className="progress-pct">{jiafangPct}%</span>
+              </div>
+              <div className="progress-row">
+                <span className="progress-label">内部任务</span>
+                <div className="progress-track"><div className="progress-fill" style={{ width: `${internalPct}%`, background: "var(--success)" }} /></div>
+                <span className="progress-pct">{internalPct}%</span>
+              </div>
+              <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)", marginTop: "var(--space-2)" }}>
+                甲方 {jiafangDone}/{jiafang} · 内部 {internalDone}/{internal}
+              </div>
+            </div>
+          </div>
+
+          <div className="db-section">
+            <div className="db-sec-head">
+              <span className="db-sec-title">导出汇报</span>
+            </div>
+            <div className="export-bar">
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
+                <div style={{ width: 40, height: 40, background: "var(--success-bg)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="var(--success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v11M5 8l5 5 5-5M3 16v2h14v-2"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Excel / CSV 导出</div>
+                  <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)" }}>适合发给老板的列表格式</div>
+                </div>
+              </div>
+              <p className="export-desc">导出当前所有任务的完整列表，包含状态、优先级、来源、负责人、截止日期等信息，可直接用 Excel 打开。</p>
+              <button className="export-btn" onClick={() => exportToExcel(tasks)}>
+                <IconDownload /> 导出 CSV 文件
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   APP ROOT
+═══════════════════════════════════════════ */
+function App() {
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [view, setView] = useState("kanban");
+  const [modalTask, setModalTask] = useState(null);
+
+  const handleSaveTask = useCallback((saved) => {
+    setTasks(prev => {
+      const exists = prev.find(t => t.id === saved.id);
+      if (exists) return prev.map(t => t.id === saved.id ? saved : t);
+      return [...prev, { ...saved, id: Date.now(), created: new Date().toISOString().slice(0,10) }];
+    });
+    setModalTask(null);
+  }, []);
+
+  return (
+    <div className="app">
+      <TopNav view={view} onViewChange={setView} />
+      {view === "kanban" ? (
+        <KanbanBoard tasks={tasks} setTasks={setTasks} onEditTask={setModalTask} />
+      ) : (
+        <Dashboard tasks={tasks} />
+      )}
+      {modalTask !== null && (
+        <TaskModal
+          task={modalTask}
+          columns={COLUMNS}
+          teamMembers={TEAM_MEMBERS}
+          jiafangSources={JIAFANG_SOURCES}
+          onSave={handleSaveTask}
+          onClose={() => setModalTask(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

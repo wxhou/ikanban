@@ -1,0 +1,126 @@
+.col {
+  width: 300px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 130px);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+  flex-shrink: 0;
+}
+
+.dropTarget {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 111, 235, 0.15);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot_todo { background: var(--meta); }
+.dot_inprogress { background: var(--accent); }
+.dot_review { background: var(--warn); }
+.dot_blocked { background: var(--danger); }
+.dot_done { background: var(--success); }
+
+.colTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  flex: 1;
+}
+
+.count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--meta);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--space-2);
+  color: var(--border);
+}
+
+.footer {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.addBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.addBtn:hover {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.addBtn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1200px) {
+  .col { width: 260px; }
+}
+
+@media (max-width: 900px) {
+  .col { width: 240px; }
+}
+
+@media (max-width: 640px) {
+  .col { width: 220px; }
+}
