@@ -6,6 +6,12 @@ import { COLUMNS } from "@/lib/types";
 import StatCard from "@/components/StatCard/StatCard";
 import { IconWarning } from "@/components/Icons";
 import { getInitials, getAssigneeColor, formatDate, isOverdue, overdueDays } from "@/utils";
+import PriorityPie from "@/components/Analytics/PriorityPie";
+import SourcePie from "@/components/Analytics/SourcePie";
+import AssigneeBar from "@/components/Analytics/AssigneeBar";
+import VersionProgress from "@/components/Analytics/VersionProgress";
+import OverdueList from "@/components/Analytics/OverdueList";
+import SubtaskCompletion from "@/components/Analytics/SubtaskCompletion";
 import styles from "./Dashboard.module.css";
 
 const statusMap: Record<TaskStatus, string> = {
@@ -67,6 +73,20 @@ const Dashboard = memo(function Dashboard({ tasks, members = [] }: DashboardProp
           changeType={overdue.length > 0 ? "warn" : "neutral"}
           colorIndex={4}
         />
+      </div>
+      <div className={styles.analyticsRow}>
+        <div className={styles.analyticsGrid}>
+          <PriorityPie tasks={tasks} />
+          <SourcePie tasks={tasks} />
+          <AssigneeBar tasks={tasks} />
+        </div>
+        <div className={styles.analyticsFullWidth}>
+          <VersionProgress tasks={tasks} />
+        </div>
+        <div className={styles.analyticsGrid2}>
+          <OverdueList tasks={tasks} />
+          <SubtaskCompletion tasks={tasks} />
+        </div>
       </div>
 
       <div className={styles.grid}>

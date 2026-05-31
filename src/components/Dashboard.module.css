@@ -367,8 +367,34 @@
 .clientBarFill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s ease; }
 .clientPct { font-size: var(--text-xs); color: var(--muted); text-align: center; font-weight: 500; }
 
+
+/* Analytics */
+.analyticsRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+.analyticsFullWidth {
+  width: 100%;
+}
+
+.analyticsGrid2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
+}
+
 @media (max-width: 1200px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
+  .analyticsGrid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 900px) {
@@ -377,4 +403,6 @@
 
 @media (max-width: 640px) {
   .stats { grid-template-columns: 1fr; }
+  .analyticsGrid { grid-template-columns: 1fr; }
+  .analyticsGrid2 { grid-template-columns: 1fr; }
 }
