@@ -20,3 +20,10 @@ export async function requireUser(req: Request): Promise<string | null> {
   const exists = await getUserByName(user);
   return exists ? user : null;
 }
+
+export async function getValidatedUser(req: Request): Promise<{ name: string; role: string } | null> {
+  const name = getRequestUser(req);
+  if (!name) return null;
+  const user = await getUserByName(name);
+  return user ? { name: user.name, role: user.role } : null;
+}

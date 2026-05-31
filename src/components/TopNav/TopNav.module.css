@@ -188,3 +188,41 @@
   background: rgba(255,255,255,.25);
   color: #fff;
 }
+
+@media (max-width: 768px) {
+  .topnav {
+    height: auto;
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+  .brand {
+    font-size: var(--text-sm);
+  }
+  .logo {
+    width: 22px;
+    height: 22px;
+  }
+  .divider,
+  .spacer {
+    display: none;
+  }
+  .pill {
+    gap: 2px;
+  }
+  .pillBtn {
+    padding: 4px 8px;
+    font-size: var(--text-xs);
+  }
+  .userInfo {
+    gap: var(--space-1);
+  }
+  .userSelect {
+    font-size: var(--text-xs);
+    padding: 2px 4px;
+  }
+  .adminBtn {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+}

@@ -207,3 +207,42 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 768px) {
+  .bar {
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+  .pills {
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+  .pill {
+    padding: 4px 10px;
+    font-size: var(--text-xs);
+  }
+  .searchInput {
+    width: 100%;
+  }
+  .searchInput:focus {
+    width: 100%;
+  }
+  .divider,
+  .spacer {
+    display: none;
+  }
+  .select,
+  .versionSelect,
+  .sortSelect {
+    width: 100%;
+  }
+  .dateRangeGroup {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .dateInput {
+    flex: 1;
+    min-width: 120px;
+  }
+}

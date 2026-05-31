@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { Task, TaskStatus, TaskPriority, TaskSource, Subtask, Comment, Version } from "@/lib/types";
 import { COLUMNS, JIAFANG_SOURCES } from "@/lib/types";
 import { useToast } from "@/lib/toast-context";
@@ -26,6 +26,8 @@ interface TaskModalProps {
 export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, versions = [], defaultVersionId, currentUser = "张三", members = [] }: TaskModalProps) {
   const isNew = !task.id;
   const [tab, setTab] = useState<TabId>("info");
+  const [titleError, setTitleError] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState({
     title: task.title || "",
     desc: task.desc || "",
@@ -45,6 +47,45 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
   const [commentImages, setCommentImages] = useState<string[]>([]);
   const toast = useToast();
 
+  // Esc key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  // Focus trap
+  useEffect(() => {
+    const modal = modalRef.current;
+    if (!modal) return;
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener("keydown", handleTab);
+    first?.focus();
+    return () => document.removeEventListener("keydown", handleTab);
+  }, []);
+
+  // Body scroll lock
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
   const toggleAssignee = (name: string) => {
@@ -57,7 +98,11 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
   };
 
   const handleSave = () => {
-    if (!form.title.trim()) return;
+    if (!form.title.trim()) {
+      setTitleError(true);
+      return;
+    }
+    setTitleError(false);
     onSave({
       title: form.title,
       desc: form.desc,
@@ -143,7 +188,7 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
 
   return (
     <div className={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={styles.modal}>
+      <div className={styles.modal} ref={modalRef} role="dialog" aria-modal="true" aria-label={isNew ? "新建任务" : readOnly ? "任务详情" : "编辑任务"}>
         <div className={styles.head}>
           <h2 className={styles.title}>{isNew ? "新建任务" : readOnly ? "任务详情" : "编辑任务"}</h2>
           <button className={styles.close} onClick={onClose}>
@@ -173,10 +218,11 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
                 className={styles.input}
                 placeholder="简要描述任务内容"
                 value={form.title}
-                onChange={(e) => set("title", e.target.value)}
+                onChange={(e) => { set("title", e.target.value); if (titleError) setTitleError(false); }}
                 disabled={readOnly}
                 autoFocus
               />
+              {titleError && <span style={{ color: "var(--danger)", fontSize: "var(--text-xs)", marginTop: 4 }}>请输入任务标题</span>}
             </div>
             <div className={styles.row}>
               <label className={styles.label}>详细描述</label>

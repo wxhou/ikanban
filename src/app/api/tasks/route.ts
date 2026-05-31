@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getAllTasks, createTask, getUserByName } from "@/lib/db";
-import { requireUser, getRequestUser } from "@/lib/auth";
+import { getAllTasks, createTask } from "@/lib/db";
+import { getValidatedUser, requireUser } from "@/lib/auth";
 import { filterTasksByRole } from "@/utils";
 
 export async function GET(request: Request) {
-  const user = getRequestUser(request);
+  const user = await getValidatedUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = new URL(request.url);
   const page = url.searchParams.get("page");
   const pageSize = url.searchParams.get("pageSize");
@@ -14,14 +15,8 @@ export async function GET(request: Request) {
 
   // Determine SQL-level source filter based on role
   let sourceFilter: string | undefined;
-  if (user) {
-    const userRecord = await getUserByName(user);
-    if (userRecord) {
-      if (userRecord.role === "client") {
-        sourceFilter = "jiafang";
-      }
-      // PRIVILEGED_ROLES and developers fall through to no SQL filter
-    }
+  if (user.role === "client") {
+    sourceFilter = "jiafang";
   }
 
   if (page && pageSize) {
@@ -34,11 +29,8 @@ export async function GET(request: Request) {
     tasks = tasks.data;
   }
   // For developers, apply JS filter (complex JSON array contains logic)
-  if (user) {
-    const userRecord = await getUserByName(user);
-    if (userRecord && userRecord.role !== "client") {
-      tasks = filterTasksByRole(tasks, user, userRecord.role);
-    }
+  if (user.role !== "client") {
+    tasks = filterTasksByRole(tasks, user.name, user.role);
   }
   return NextResponse.json(tasks);
 }

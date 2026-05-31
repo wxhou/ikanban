@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import AgentationWrapper from "@/components/AgentationWrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "项目看板 — 全局管理",
   description: "管理项目任务的看板系统",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

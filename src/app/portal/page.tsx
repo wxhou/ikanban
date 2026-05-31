@@ -28,7 +28,35 @@ export default function PortalPage() {
   const [dateRangeStart, setDateRangeStart] = useState("");
   const [dateRangeEnd, setDateRangeEnd] = useState("");
   const [assignees, setAssignees] = useState<string[]>([]);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auth gate — check localStorage for logged-in user
+  useEffect(() => {
+    const stored = localStorage.getItem("ikanban_user");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setUserName(parsed.name || stored);
+      } catch {
+        setUserName(stored);
+      }
+    }
+    setAuthChecked(true);
+  }, []);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (authChecked && !userName) {
+      window.location.href = "/";
+    }
+  }, [authChecked, userName]);
+
+  const userHeaders = useMemo((): Record<string, string> => {
+    if (!userName) return {};
+    return { "x-user": btoa(unescape(encodeURIComponent(userName))) };
+  }, [userName]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -53,7 +81,7 @@ export default function PortalPage() {
       if (document.hidden) return;
       setIsRefreshing(true);
       try {
-        const res = await fetch("/api/portal/tasks");
+        const res = await fetch("/api/portal/tasks", { headers: userHeaders });
         if (res.ok) {
           const data = await res.json();
           setTasks(Array.isArray(data) ? data : data.tasks || []);
@@ -64,7 +92,7 @@ export default function PortalPage() {
         setIsRefreshing(false);
       }
     }, 15_000);
-  }, []);
+  }, [userHeaders]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -86,9 +114,10 @@ export default function PortalPage() {
   }, [startPolling]);
 
   useEffect(() => {
+    if (!authChecked || !userName) return;
     Promise.all([
-      fetch("/api/portal/tasks").then((r) => r.json()),
-      fetch("/api/portal/versions").then((r) => r.json()),
+      fetch("/api/portal/tasks", { headers: userHeaders }).then((r) => r.json()),
+      fetch("/api/portal/versions", { headers: userHeaders }).then((r) => r.json()),
     ]).then(([t, v]) => {
       setTasks(t);
       setVersions(v);
@@ -99,11 +128,11 @@ export default function PortalPage() {
       }
       setLoading(false);
     });
-    fetch("/api/assignees")
+    fetch("/api/assignees", { headers: userHeaders })
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setAssignees(data); })
       .catch(() => {});
-  }, []);
+  }, [authChecked, userName, userHeaders]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -189,7 +218,7 @@ export default function PortalPage() {
 
   const maxColCount = Math.max(...COLUMNS.map((c) => filtered.filter((t) => t.status === c.id).length), 1);
 
-  if (loading) {
+  if (loading || !authChecked) {
     return (
       <div className={styles.loading}>
         <div className={styles.spinner} />
