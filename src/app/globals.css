@@ -45,7 +45,10 @@
   --elev-raised: 0 2px 8px color-mix(in oklab, var(--fg), transparent 92%);
   --motion-fast: 150ms;
   --motion-base: 200ms;
+  --motion-enter: 300ms;
+  --motion-exit: 200ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0, 0, 0, 1);
 }
 
 *,
@@ -58,12 +61,12 @@
 
 html {
   font-family: var(--font-body);
-  font-size: var(--text-base);
+  font-size: 14px;
   color: var(--fg);
-  background: var(--bg);
+  background: linear-gradient(180deg, #f0f4ff 0%, #fafafa 30%, #fafafa 100%);
+  min-height: 100%;
   line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
-  height: 100%;
 }
 
 body {
@@ -120,4 +123,32 @@ a:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent), transparent 70%);
   border-radius: var(--radius-sm);
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Shared animation keyframes ── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeScale {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.view-enter {
+  animation: fadeIn var(--motion-enter) var(--ease-out) both;
 }

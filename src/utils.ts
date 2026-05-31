@@ -1,7 +1,7 @@
 import type { Task, TaskStatus, TaskPriority, TaskSource } from "./lib/types";
 
 export function getInitials(name: string): string {
-  return name.slice(0, 2);
+  return name.slice(0, 1);
 }
 
 const ASSIGNEE_COLORS = [
@@ -21,12 +21,47 @@ export function formatDate(d: string | null): string {
   return d.slice(5).replace("-", "/");
 }
 
+export function isOverdue(task: Task): boolean {
+  if (!task.due || task.status === "done") return false;
+  return task.due < new Date().toISOString().split("T")[0];
+}
+
+export function overdueDays(due: string | null): number {
+  if (!due) return 0;
+  const diff = Date.now() - new Date(due).getTime();
+  return Math.max(0, Math.ceil(diff / 86400000));
+}
+
+/**
+ * Roles that can see all 甲方 (jiafang) source tasks.
+ */
+const PRIVILEGED_ROLES = new Set(["admin", "tech_lead", "pm", "senior_mgmt"]);
+
+export function canSeeJiafangSource(role: string): boolean {
+  return PRIVILEGED_ROLES.has(role);
+}
+
+export function filterTasksByRole(tasks: Task[], currentUser: string, role: string): Task[] {
+  if (PRIVILEGED_ROLES.has(role)) return tasks;
+  if (role === "client") return tasks.filter((t) => t.source === "jiafang");
+  return tasks.filter(
+    (t) => t.source === "internal" || t.assignees.includes(currentUser),
+  );
+}
+
+export function isDueSoon(task: Task): boolean {
+  if (!task.due || task.status === "done") return false;
+  const dueTime = new Date(task.due).getTime();
+  const now = Date.now();
+  return dueTime > now && dueTime - now <= 3 * 86400000;
+}
+
 export function exportToExcel(tasks: Task[]): void {
   const headers = [
     "任务名称", "描述", "状态", "优先级", "来源", "对接人", "负责人", "截止日期", "创建日期",
   ];
   const statusMap: Record<TaskStatus, string> = {
-    todo: "待办", inprogress: "进行中", review: "审核中", blocked: "已阻塞", done: "已完成",
+    todo: "待办", inprogress: "进行中", review: "审核中", verifying: "待验收", blocked: "已阻塞", done: "已完成",
   };
   const priorityMap: Record<TaskPriority, string> = { high: "高", medium: "中", low: "低" };
   const sourceMap: Record<TaskSource, string> = { jiafang: "甲方", internal: "内部" };

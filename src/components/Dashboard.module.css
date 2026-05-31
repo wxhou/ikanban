@@ -25,7 +25,7 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -47,6 +47,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
+  transition: box-shadow .2s var(--ease-standard);
+}
+
+.section:hover {
+  box-shadow: 0 2px 12px color-mix(in oklab, var(--fg), transparent 92%);
 }
 
 .secHead {
@@ -197,6 +202,170 @@
   width: 14px;
   height: 14px;
 }
+
+.overdueList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.overdueItem {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.overdueItemTitle {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.overdueDays {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--danger);
+  background: #fef2f2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.overdueMeta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.overdueEmpty {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  padding: var(--space-4) var(--space-5);
+  text-align: center;
+}
+
+/* Column distribution */
+.panelBody {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.colBarItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.colBarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.colBarName {
+  font-size: var(--text-sm);
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.colBarDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.colBarCount {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.colBarTrack {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.colBarFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* Team workload */
+.teamRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.teamAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.teamInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.teamName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.teamCount {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.teamBarWrap {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.teamBarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Client stats */
+.clientStats { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.clientRow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2); }
+.clientCard { padding: var(--space-3); background: var(--bg); border-radius: var(--radius-sm); border-left: 3px solid var(--border); text-align: center; }
+.clientNum { font-size: 24px; font-weight: 700; line-height: 1; }
+.clientLabel { font-size: var(--text-xs); color: var(--muted); margin-top: 4px; }
+.clientBar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.clientBarFill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s ease; }
+.clientPct { font-size: var(--text-xs); color: var(--muted); text-align: center; font-weight: 500; }
 
 @media (max-width: 1200px) {
   .stats { grid-template-columns: repeat(2, 1fr); }

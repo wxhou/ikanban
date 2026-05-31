@@ -7,6 +7,12 @@
   justify-content: center;
   z-index: 1000;
   padding: var(--space-4);
+  animation: overlayIn var(--motion-base) var(--ease-out) both;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal {
@@ -17,6 +23,12 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  animation: modalIn var(--motion-enter) var(--ease-out) both;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .head {
@@ -186,6 +198,282 @@ select.input {
   border-top: 1px solid var(--border);
 }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 var(--space-6);
+}
+
+.tab {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  position: relative;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.tab:hover {
+  color: var(--fg);
+}
+
+.tabActive {
+  color: var(--accent);
+}
+
+.tabActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* Subtask */
+.subtaskList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.subtaskItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.subtaskItem input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.subtaskTextInput {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  background: var(--surface);
+  color: var(--fg);
+  outline: none;
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+.subtaskTextInput:focus {
+  border-color: var(--accent);
+}
+
+.subtaskDone .subtaskTextInput {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.subtaskDelete {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  flex-shrink: 0;
+  transition: all var(--motion-fast);
+}
+
+.subtaskDelete:hover {
+  background: #fef2f2;
+  color: var(--danger);
+}
+
+.subtaskDelete svg {
+  width: 12px;
+  height: 12px;
+}
+
+.subtaskAdd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: opacity var(--motion-fast);
+}
+
+.subtaskAdd:hover {
+  opacity: 0.8;
+}
+
+.subtaskAdd svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Comments */
+.commentList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.commentItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commentHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.commentAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.commentMeta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.commentText {
+  font-size: var(--text-sm);
+  color: var(--fg);
+  line-height: 1.5;
+  padding-left: 34px;
+}
+
+.commentInputRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.commentInputRow textarea {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  background: var(--bg);
+  color: var(--fg);
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  outline: none;
+}
+
+.commentInputRow textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.commentSendBtn {
+  flex-shrink: 0;
+  height: 60px;
+  padding: 0 var(--space-4);
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.commentSendBtn:hover {
+  background: var(--accent-hover);
+}
+
+.commentSendBtn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.commentInputWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.commentPreviewImages {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.commentPreviewImg {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.commentInputBottom {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.uploadBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+
+.uploadBtn:hover { border-color: var(--accent); color: var(--accent); }
+.uploadBtn svg { width: 14px; height: 14px; }
+
+.commentImages {
+  display: flex; gap: 6px; flex-wrap: wrap; padding-left: 34px; margin-top: 4px;
+}
+
+.commentImg {
+  width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); cursor: pointer;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -216,6 +504,20 @@ select.input {
 .btnSecondary:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.btnDanger {
+  border: 1px solid #fecaca;
+  color: var(--danger);
+  background: var(--surface);
+}
+
+.btnDanger:hover {
+  background: #fef2f2;
+}
+
+.footSpacer {
+  flex: 1;
 }
 
 @media (max-width: 900px) {

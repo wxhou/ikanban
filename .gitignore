@@ -42,6 +42,14 @@ next-env.d.ts
 
 # sqlite database
 data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # claude
 .claude/
+.gstack/
+.playwright-mcp/
+
+# screenshots
+*.png
+*.jpg

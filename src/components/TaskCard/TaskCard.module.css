@@ -1,21 +1,37 @@
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
-  cursor: grab;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   transition:
-    box-shadow var(--motion-fast) var(--ease-standard),
-    transform var(--motion-fast) var(--ease-standard),
-    opacity var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
+    box-shadow .2s var(--ease-standard),
+    transform .2s var(--ease-standard),
+    border-color .2s var(--ease-standard);
   user-select: none;
+  position: relative;
+  animation: cardIn 0.3s var(--ease-out) both;
+  animation-delay: var(--card-delay, 0ms);
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card:hover {
-  box-shadow: var(--elev-raised);
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--border), var(--fg) 15%);
+  box-shadow: 0 2px 12px color-mix(in oklab, var(--fg), transparent 90%);
+  transform: translateY(-2px);
+  border-color: var(--border);
 }
 
 .dragging {
@@ -26,14 +42,43 @@
 
 .dropTarget {
   border: 2px dashed var(--accent) !important;
-  background: color-mix(in oklab, var(--surface), var(--accent) 8%);
+  background: color-mix(in oklab, var(--surface), var(--accent) 10%);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent), transparent 80%);
+  transform: scale(1.01);
 }
 
 .top {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
+}
+
+.editBtn {
+  opacity: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--muted);
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: opacity .15s, background .15s;
+}
+
+.card:hover .editBtn {
+  opacity: 1;
+}
+
+.editBtn:hover {
+  background: var(--bg);
+  color: var(--accent);
+}
+
+.editBtn svg {
+  width: 12px;
+  height: 12px;
 }
 
 .priorityDot {
@@ -45,15 +90,16 @@
 }
 
 .title {
-  font-size: var(--text-sm);
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--fg);
   flex: 1;
   line-height: 1.4;
 }
 
 .body {
-  margin-bottom: var(--space-2);
+  /* wrapper for desc - required for CSS module class generation */
+  display: block;
 }
 
 .desc {
@@ -70,7 +116,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-bottom: var(--space-2);
 }
 
 .tag {
@@ -91,12 +136,27 @@
   color: #854d0e;
 }
 
+.tagLabel {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.versionTag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e0f2fe;
+  color: #0369a1;
+  white-space: nowrap;
+}
+
 .footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-soft);
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .meta {
@@ -135,4 +195,167 @@
   justify-content: center;
   flex-shrink: 0;
   border: 2px solid var(--surface);
+}
+
+.overdue {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.overdue:hover {
+  border-color: #f87171;
+}
+
+.dueSoon {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.dueSoon:hover {
+  border-color: #f59e0b;
+}
+
+.dueSoonBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.overdueBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--danger);
+  background: #fef2f2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.overdueBadge svg {
+  width: 11px;
+  height: 11px;
+}
+
+.commentToggle {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all .15s var(--ease-standard);
+}
+
+.commentToggle:hover {
+  background: var(--bg);
+  color: var(--accent);
+}
+
+.verifyingBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #7c3aed;
+  background: #f5f3ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.quickComment {
+  display: flex;
+  gap: var(--space-1);
+  align-items: flex-end;
+}
+
+.quickCommentInput {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  resize: none;
+  min-height: 32px;
+  font-family: inherit;
+  outline: none;
+}
+
+.quickCommentInput:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.quickCommentSend {
+  flex-shrink: 0;
+  padding: var(--space-1);
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  height: 32px;
+  width: 32px;
+  transition: background .15s var(--ease-standard);
+}
+
+.quickCommentSend:hover {
+  background: var(--accent-hover);
+}
+
+.quickCommentSend svg {
+  width: 14px;
+  height: 14px;
+}
+
+.progressWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progressLabel {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.progressLabel svg {
+  width: 11px;
+  height: 11px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent), transparent 70%);
 }

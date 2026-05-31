@@ -1,37 +1,38 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import type { Task, TaskStatus, TaskPriority, TaskSource } from "@/lib/types";
+import { COLUMNS } from "@/lib/types";
 import StatCard from "@/components/StatCard/StatCard";
-import ProgressBar from "@/components/ProgressBar/ProgressBar";
-import { IconDownload } from "@/components/Icons";
-import { getInitials, getAssigneeColor, formatDate, exportToExcel } from "@/utils";
+import { IconWarning } from "@/components/Icons";
+import { getInitials, getAssigneeColor, formatDate, isOverdue, overdueDays } from "@/utils";
 import styles from "./Dashboard.module.css";
 
 const statusMap: Record<TaskStatus, string> = {
-  todo: "待办", inprogress: "进行中", review: "审核中", blocked: "已阻塞", done: "已完成",
+  todo: "待办", inprogress: "进行中", review: "审核中", verifying: "待验收", blocked: "已阻塞", done: "已完成",
 };
 const priorityMap: Record<TaskPriority, string> = { high: "高", medium: "中", low: "低" };
 const sourceMap: Record<TaskSource, string> = { jiafang: "甲方", internal: "内部" };
 const statusColor: Record<TaskStatus, string> = {
-  todo: "var(--meta)", inprogress: "var(--accent)", review: "var(--warn)", blocked: "var(--danger)", done: "var(--success)",
+  todo: "var(--meta)", inprogress: "var(--accent)", review: "var(--warn)", verifying: "#7c3aed", blocked: "var(--danger)", done: "var(--success)",
 };
 
 interface DashboardProps {
   tasks: Task[];
+  members?: string[];
 }
 
-export default function Dashboard({ tasks }: DashboardProps) {
-  const total = tasks.length;
-  const done = tasks.filter((t) => t.status === "done").length;
-  const inprogress = tasks.filter((t) => t.status === "inprogress").length;
-  const blocked = tasks.filter((t) => t.status === "blocked").length;
-  const jiafang = tasks.filter((t) => t.source === "jiafang").length;
-  const jiafangDone = tasks.filter((t) => t.source === "jiafang" && t.status === "done").length;
-  const internal = tasks.filter((t) => t.source === "internal").length;
-  const internalDone = tasks.filter((t) => t.source === "internal" && t.status === "done").length;
-  const completion = total > 0 ? Math.round((done / total) * 100) : 0;
-  const jiafangPct = jiafang > 0 ? Math.round((jiafangDone / jiafang) * 100) : 0;
-  const internalPct = internal > 0 ? Math.round((internalDone / internal) * 100) : 0;
+const Dashboard = memo(function Dashboard({ tasks, members = [] }: DashboardProps) {
+  const { total, done, inprogress, blocked, overdue, completion, maxColCount } = useMemo(() => {
+    const total = tasks.length;
+    const done = tasks.filter((t) => t.status === "done").length;
+    const inprogress = tasks.filter((t) => t.status === "inprogress").length;
+    const blocked = tasks.filter((t) => t.status === "blocked").length;
+    const overdue = tasks.filter((t) => isOverdue(t));
+    const completion = total > 0 ? Math.round((done / total) * 100) : 0;
+    const maxColCount = Math.max(...COLUMNS.map((c) => tasks.filter((t) => t.status === c.id).length), 1);
+    return { total, done, inprogress, blocked, overdue, completion, maxColCount };
+  }, [tasks]);
 
   return (
     <div className={styles.dashboard}>
@@ -58,6 +59,13 @@ export default function Dashboard({ tasks }: DashboardProps) {
           change={blocked > 0 ? `需关注 ${blocked} 项阻塞` : "无阻塞项"}
           changeType={blocked > 0 ? "warn" : "neutral"}
           colorIndex={3}
+        />
+        <StatCard
+          label="已逾期"
+          value={overdue.length}
+          change={overdue.length > 0 ? "需立即处理" : "无逾期任务"}
+          changeType={overdue.length > 0 ? "warn" : "neutral"}
+          colorIndex={4}
         />
       </div>
 
@@ -124,36 +132,92 @@ export default function Dashboard({ tasks }: DashboardProps) {
         <div className={styles.sideCol}>
           <div className={styles.section}>
             <div className={styles.secHead}>
-              <span className={styles.secTitle}>完成进度</span>
+              <span className={styles.secTitle}><IconWarning /> 逾期任务预警</span>
+              {overdue.length > 0 && <span style={{ fontSize: "var(--text-xs)", color: "var(--danger)", fontWeight: 600 }}>{overdue.length} 项</span>}
             </div>
-            <ProgressBar label="甲方任务" percent={jiafangPct} color="var(--accent)" detail={`甲方 ${jiafangDone}/${jiafang} · 内部 ${internalDone}/${internal}`} />
-            <ProgressBar label="内部任务" percent={internalPct} color="var(--success)" detail="" />
+            {overdue.length === 0 ? (
+              <div className={styles.overdueEmpty}>暂无逾期任务</div>
+            ) : (
+              <div className={styles.overdueList}>
+                {[...overdue].sort((a, b) => overdueDays(b.due) - overdueDays(a.due)).map((t) => {
+                  const col = COLUMNS.find((c) => c.id === t.status);
+                  const days = overdueDays(t.due);
+                  return (
+                    <div key={t.id} className={styles.overdueItem}>
+                      <div className={styles.overdueItemTitle}>
+                        <span>{t.title}</span>
+                        <span className={styles.overdueDays}>逾期 {days} 天</span>
+                      </div>
+                      <div className={styles.overdueMeta}>
+                        {col?.label} · {t.assignees.join(", ") || "未分配"} · 截止 {t.due}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className={styles.section}>
             <div className={styles.secHead}>
-              <span className={styles.secTitle}>导出汇报</span>
+              <span className={styles.secTitle}>列分布</span>
             </div>
-            <div className={styles.exportBar}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
-                <div className={styles.exportIcon}>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="var(--success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 2v11M5 8l5 5 5-5M3 16v2h14v-2" />
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Excel / CSV 导出</div>
-                  <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)" }}>适合发给老板的列表格式</div>
-                </div>
-              </div>
-              <p className={styles.exportDesc}>导出当前所有任务的完整列表，包含状态、优先级、来源、负责人、截止日期等信息，可直接用 Excel 打开。</p>
-              <button className={styles.exportBtn} onClick={() => exportToExcel(tasks)}>
-                <IconDownload /> 导出 CSV 文件
-              </button>
+            <div className={styles.panelBody}>
+              {COLUMNS.map((col) => {
+                const ct = tasks.filter((t) => t.status === col.id).length;
+                const pct = Math.round((ct / maxColCount) * 100);
+                return (
+                  <div key={col.id} className={styles.colBarItem}>
+                    <div className={styles.colBarHeader}>
+                      <span className={styles.colBarName}>
+                        <span className={styles.colBarDot} style={{ background: statusColor[col.id] }} />
+                        {col.label}
+                      </span>
+                      <span className={styles.colBarCount}>{ct}</span>
+                    </div>
+                    <div className={styles.colBarTrack}>
+                      <div className={styles.colBarFill} style={{ width: `${pct}%`, background: statusColor[col.id] }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
+
+          <div className={styles.section}>
+            <div className={styles.secHead}>
+              <span className={styles.secTitle}>人员负载</span>
+            </div>
+            <div className={styles.panelBody}>
+              {members.map((mem) => {
+                const memTasks = tasks.filter((t) => t.assignees.includes(mem));
+                const memTotal = memTasks.length;
+                const memActive = memTasks.filter((t) => t.status === "inprogress" || t.status === "review").length;
+                const loadPct = memTotal > 0 ? Math.round((memActive / memTotal) * 100) : 0;
+                const barColor = loadPct >= 70 ? "var(--danger)" : loadPct >= 40 ? "var(--warn)" : "var(--success)";
+                return (
+                  <div key={mem} className={styles.teamRow}>
+                    <div className={styles.teamAvatar} style={{ background: getAssigneeColor(mem) }}>{getInitials(mem)}</div>
+                    <div className={styles.teamInfo}>
+                      <div className={styles.teamName}>
+                        {mem}
+                        <span className={styles.teamCount}>{memTotal > 0 ? `${memTotal} 个任务` : "暂无任务"}</span>
+                      </div>
+                      {memTotal > 0 && (
+                        <div className={styles.teamBarWrap}>
+                          <div className={styles.teamBarFill} style={{ width: `${loadPct}%`, background: barColor }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
       </div>
     </div>
+    </div>
   );
-}
+});
+
+export default Dashboard;

@@ -1,0 +1,194 @@
+.report {
+  padding: var(--space-6);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: var(--tracking-display);
+  margin-bottom: 4px;
+}
+
+.sub {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 14px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.exportBtn:hover {
+  background: var(--accent-hover);
+}
+
+.exportBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tableWrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: var(--bg);
+}
+
+.overdueRow td {
+  color: var(--danger);
+}
+
+.overdueRow .cellMuted {
+  color: var(--danger);
+}
+
+.cellNum {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  width: 36px;
+}
+
+.cellTitle {
+  font-weight: 500;
+  max-width: 280px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cellMuted {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.cellDanger {
+  color: var(--danger) !important;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.badgeJiafang {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badgeInternal {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.priorityBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.pb_high { background: var(--danger-bg); color: var(--danger); }
+.pb_medium { background: var(--warn-bg); color: #854d0e; }
+.pb_low { background: var(--success-bg); color: var(--success); }
+
+.overdueBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--danger);
+  background: #fef2f2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.subtaskCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.miniBar {
+  width: 40px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.miniBarFill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+@media print {
+  .exportBtn { display: none; }
+  .report { padding: 0; }
+  .tableWrap { border: none; }
+  .table tr:hover td { background: none; }
+}

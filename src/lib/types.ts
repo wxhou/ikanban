@@ -1,3 +1,28 @@
+export interface Subtask {
+  id: number;
+  taskId: number;
+  text: string;
+  done: boolean;
+  sortOrder: number;
+}
+
+export interface Comment {
+  id: number;
+  taskId: number;
+  user: string;
+  text: string;
+  images: string;
+  created: string;
+}
+
+export interface Version {
+  id: number;
+  name: string;
+  status: "active" | "closed";
+  description: string;
+  created: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -7,12 +32,16 @@ export interface Task {
   source: TaskSource;
   requester: string | null;
   assignees: string[];
+  versionId: number | null;
   due: string | null;
   created: string;
   updated: string;
+  subtasks: Subtask[];
+  comments: Comment[];
+  tags: string[];
 }
 
-export type TaskStatus = "todo" | "inprogress" | "review" | "blocked" | "done";
+export type TaskStatus = "todo" | "inprogress" | "review" | "verifying" | "blocked" | "done";
 export type TaskPriority = "high" | "medium" | "low";
 export type TaskSource = "jiafang" | "internal";
 
@@ -20,9 +49,9 @@ export const COLUMNS: { id: TaskStatus; label: string }[] = [
   { id: "todo", label: "待办" },
   { id: "inprogress", label: "进行中" },
   { id: "review", label: "审核中" },
+  { id: "verifying", label: "待验收" },
   { id: "blocked", label: "已阻塞" },
   { id: "done", label: "已完成" },
 ];
 
-export const TEAM_MEMBERS = ["张三", "李四", "王五", "赵六", "钱七", "孙八"];
 export const JIAFANG_SOURCES = ["需求对接人", "项目对接人"];
