@@ -6,6 +6,8 @@ function getUserHeader(): Record<string, string> {
   return user ? { "x-user": btoa(unescape(encodeURIComponent(user))) } : {};
 }
 
+export { getUserHeader };
+
 const headers = { "Content-Type": "application/json" } as Record<string, string>;
 
 // ── Version API ──

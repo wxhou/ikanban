@@ -15,6 +15,28 @@ export interface Comment {
   created: string;
 }
 
+export type LinkType = "blocks" | "blocked_by" | "related";
+
+export interface TaskLink {
+  id: number;
+  taskId: number;
+  linkedTaskId: number;
+  linkType: LinkType;
+  linkedTaskTitle?: string;
+}
+
+export interface Notification {
+  id: number;
+  userName: string;
+  type: NotificationType;
+  taskId: number | null;
+  text: string;
+  read: boolean;
+  created: string;
+}
+
+export type NotificationType = "assigned" | "due_soon" | "overdue" | "commented" | "completed";
+
 export interface Version {
   id: number;
   name: string;
@@ -39,6 +61,7 @@ export interface Task {
   subtasks: Subtask[];
   comments: Comment[];
   tags: string[];
+  linkedTasks?: TaskLink[];
 }
 
 export type TaskStatus = "todo" | "inprogress" | "review" | "verifying" | "blocked" | "done";

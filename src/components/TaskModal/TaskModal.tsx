@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Task, TaskStatus, TaskPriority, TaskSource, Subtask, Comment, Version } from "@/lib/types";
+import type { Task, TaskStatus, TaskPriority, TaskSource, Subtask, Comment, Version, TaskLink } from "@/lib/types";
 import { COLUMNS, JIAFANG_SOURCES } from "@/lib/types";
 import { useToast } from "@/lib/toast-context";
 import { IconX, IconPlus, IconSend, IconTrash } from "@/components/Icons";
 import { getInitials, getAssigneeColor } from "@/utils";
-import { createSubtask, updateSubtask, deleteSubtask, createComment, deleteComment } from "@/api";
+import { createSubtask, updateSubtask, deleteSubtask, createComment, deleteComment, getUserHeader } from "@/api";
 import styles from "./TaskModal.module.css";
 
-type TabId = "info" | "subtasks" | "comments";
+type TabId = "info" | "subtasks" | "comments" | "links";
 
 interface TaskModalProps {
   task: Partial<Task> & { status?: TaskStatus };
@@ -45,6 +45,10 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
   const [commentText, setCommentText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [commentImages, setCommentImages] = useState<string[]>([]);
+  const [linkedTasks, setLinkedTasks] = useState<TaskLink[]>(task.linkedTasks || []);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [showLinkSearch, setShowLinkSearch] = useState(false);
+  const [linkType, setLinkType] = useState("related");
   const toast = useToast();
 
   // Esc key handler
@@ -168,13 +172,29 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
       setComments((prev) => [...prev, created]);
       setCommentText("");
       setCommentImages([]);
+      // Notify other task participants
+      const participants = form.assignees.filter((a) => a !== currentUser);
+      for (const p of participants) {
+        try {
+          await fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            body: JSON.stringify({
+              userName: p,
+              type: "commented",
+              text: `${currentUser} 评论了任务「${form.title}」`,
+              taskId: task.id,
+            }),
+          });
+        } catch { /* ignore */ }
+      }
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("新评论", { body: `${currentUser}: ${commentText.trim().slice(0, 50)}` });
       }
     } catch (err) {
       toast.show("评论发送失败", "error");
     }
-  }, [task.id, commentText, commentImages]);
+  }, [task.id, commentText, commentImages, form.title, form.assignees, currentUser]);
 
   const handleDeleteComment = useCallback(async (comment: Comment) => {
     if (!task.id) return;
@@ -183,6 +203,38 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
       setComments((prev) => prev.filter((c) => c.id !== comment.id));
     } catch (err) {
       toast.show("操作失败", "error");
+    }
+  }, [task.id]);
+
+  // ── Link handlers ──
+  const handleAddLink = useCallback(async (linkedTaskId: number, linkType: string) => {
+    if (!task.id || !linkedTaskId) return;
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/links`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getUserHeader() },
+        body: JSON.stringify({ linkedTaskId, linkType }),
+      });
+      if (res.ok) {
+        const link = await res.json();
+        setLinkedTasks((prev) => [...prev, link]);
+        setShowLinkSearch(false);
+        setLinkSearch("");
+      }
+    } catch (err) {
+      toast.show("添加关联失败", "error");
+    }
+  }, [task.id]);
+
+  const handleRemoveLink = useCallback(async (linkId: number) => {
+    if (!task.id) return;
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/links?linkId=${linkId}`, { method: "DELETE", headers: getUserHeader() });
+      if (res.ok) {
+        setLinkedTasks((prev) => prev.filter((l) => l.id !== linkId));
+      }
+    } catch (err) {
+      toast.show("删除关联失败", "error");
     }
   }, [task.id]);
 
@@ -206,6 +258,9 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
             </button>
             <button className={`${styles.tab} ${tab === "comments" ? styles.tabActive : ""}`} onClick={() => setTab("comments")}>
               评论 {comments.length > 0 ? `(${comments.length})` : ""}
+            </button>
+            <button className={`${styles.tab} ${tab === "links" ? styles.tabActive : ""}`} onClick={() => setTab("links")}>
+              关联任务 {linkedTasks.length > 0 ? `(${linkedTasks.length})` : ""}
             </button>
           </div>
         )}
@@ -446,6 +501,88 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
               </div>
               </div>
             </div>
+            )}
+          </div>
+        )}
+
+        {tab === "links" && !isNew && (
+          <div className={styles.body}>
+            <div className={styles.subtaskList}>
+              {linkedTasks.length === 0 && !showLinkSearch && (
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)", padding: "var(--space-2) 0" }}>
+                  暂无关联任务
+                </div>
+              )}
+              {linkedTasks.map((link) => (
+                <div key={link.id} className={styles.subtaskItem}>
+                  <span style={{
+                    fontSize: "10px", fontWeight: 600, padding: "2px 7px", borderRadius: 4,
+                    background: link.linkType === "blocks" ? "#fee2e2" : link.linkType === "blocked_by" ? "#fef3c7" : "#e0f2fe",
+                    color: link.linkType === "blocks" ? "#dc2626" : link.linkType === "blocked_by" ? "#b45309" : "#0369a1",
+                    flexShrink: 0,
+                  }}>
+                    {link.linkType === "blocks" ? "阻塞" : link.linkType === "blocked_by" ? "被阻塞" : "关联"}
+                  </span>
+                  <span style={{ flex: 1, fontSize: "var(--text-sm)", color: "var(--fg)" }}>
+                    {link.linkedTaskTitle || `#${link.linkedTaskId}`}
+                  </span>
+                  {!readOnly && (
+                    <button className={styles.subtaskDelete} onClick={() => handleRemoveLink(link.id)}>
+                      <IconTrash />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {showLinkSearch && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                  <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                    <input
+                      className={styles.subtaskTextInput}
+                      placeholder="输入任务 ID…"
+                      value={linkSearch}
+                      onChange={(e) => setLinkSearch(e.target.value)}
+                      autoFocus
+                      style={{ flex: 1 }}
+                    />
+                    <select
+                      className={styles.subtaskTextInput}
+                      value={linkType}
+                      onChange={(e) => setLinkType(e.target.value)}
+                      style={{ width: 80, flexShrink: 0 }}
+                    >
+                      <option value="blocks">阻塞</option>
+                      <option value="blocked_by">被阻塞</option>
+                      <option value="related">关联</option>
+                    </select>
+                    <button
+                      className={styles.quickCommentSend}
+                      onClick={() => handleAddLink(Number(linkSearch), linkType)}
+                      style={{ height: 32 }}
+                    >
+                      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M7 2v10M2 7h10" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)" }}>
+                    输入任务 ID（如 42）添加关联
+                  </div>
+                </div>
+              )}
+            </div>
+            {!readOnly && !showLinkSearch && (
+              <button className={styles.subtaskAdd} onClick={() => setShowLinkSearch(true)}>
+                <IconPlus /> 添加关联
+              </button>
+            )}
+            {showLinkSearch && (
+              <button
+                className={styles.subtaskAdd}
+                onClick={() => { setShowLinkSearch(false); setLinkSearch(""); }}
+                style={{ color: "var(--muted)" }}
+              >
+                取消
+              </button>
             )}
           </div>
         )}

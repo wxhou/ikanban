@@ -296,6 +296,14 @@ export default function KanbanBoard({ initialTasks: tasks, onEditTask, onViewTas
     });
   }, []);
 
+  const handleLinkView = useCallback((taskId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) {
+      onViewTask(task);
+    }
+  }, [tasks, onViewTask]);
+
   const handleBatchStatusChange = useCallback(async (status: TaskStatus) => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
@@ -407,6 +415,7 @@ export default function KanbanBoard({ initialTasks: tasks, onEditTask, onViewTas
             currentUser={currentUser}
             selectedIds={selectedIds}
             onSelectTask={handleSelectTask}
+            onLinkView={handleLinkView}
           />
         ))}
       </div>

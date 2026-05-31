@@ -72,7 +72,9 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **编辑要求**：编辑后重新读取文件确认变更正确应用。变更完成后，明确告知用户可能遗漏的区域（动态引用、测试 mock 等），提示人工复查。
 
-**禁止脚本改文件**：修改源码文件只能使用内置编辑工具（Read/Edit/Write），禁止用 sed/awk/node -e/python -c 等管道命令改文件。格式化工具（ruff fmt、prettier）除外。
+**强制使用 hashline-edit**：所有源码文件编辑必须使用 hashline-edit MCP（`mcp__hashline-edit__edit_file`），禁止使用内置 Edit 工具。hashline-edit 提供基于行哈希的精确编辑，支持 `set_line`、`replace_lines`、`insert_after`、`replace` 操作，比内置 Edit 更安全可靠。
+
+**禁止脚本改文件**：修改源码文件只能使用 hashline-edit MCP，禁止用 sed/awk/node -e/python -c 等管道命令改文件。格式化工具（ruff fmt、prettier）除外。
 
 **不主动推送**：除非用户明确要求，否则不推送代码。
 

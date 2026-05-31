@@ -11,9 +11,11 @@ interface TopNavProps {
   onLogout: () => void;
   isAdmin?: boolean;
   onUserManagement?: () => void;
+  unreadCount?: number;
+  onBellClick?: () => void;
 }
 
-export default function TopNav({ view, onViewChange, currentUser, onAvatarClick, onLogout, isAdmin, onUserManagement }: TopNavProps) {
+export default function TopNav({ view, onViewChange, currentUser, onAvatarClick, onLogout, isAdmin, onUserManagement, unreadCount = 0, onBellClick }: TopNavProps) {
   return (
     <nav className={styles.topnav}>
       <a className={styles.brand} href="#">
@@ -54,6 +56,17 @@ export default function TopNav({ view, onViewChange, currentUser, onAvatarClick,
             用户管理
           </button>
         )}
+        <div className={styles.bellWrap}>
+          <button className={styles.bellBtn} onClick={onBellClick} title="通知中心">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M6.5 2.5C4.5 3.2 3 5.2 3 7.5V10L2 11V12H14V11L13 10V7.5C13 5.2 11.5 3.2 9.5 2.5V1.5C9.5 0.67 8.83 0 8 0C7.17 0 6.5 0.67 6.5 1.5V2.5Z" fill="currentColor"/>
+              <path d="M6 14C6 15.1 6.9 16 8 16C9.1 16 10 15.1 10 14H6Z" fill="currentColor"/>
+            </svg>
+          </button>
+          {unreadCount > 0 && (
+            <span className={styles.bellBadge}>{unreadCount > 99 ? "99+" : unreadCount}</span>
+          )}
+        </div>
         <div className={styles.avatar} onClick={onAvatarClick} title="我的待办">{currentUser.slice(0,1)}</div>
         <button className={styles.logoutBtn} onClick={onLogout} title="退出登录">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

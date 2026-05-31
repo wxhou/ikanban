@@ -2,13 +2,14 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import type { Task, Version } from "@/lib/types";
+import type { Task, Version, Notification as NotifType } from "@/lib/types";
 import { ToastProvider, useToast } from "@/lib/toast-context";
 import TopNav from "@/components/TopNav/TopNav";
 import KanbanBoard from "@/components/KanbanBoard";
 import VersionPage from "@/components/VersionPage";
 import LoginPage from "@/components/LoginPage";
-import { createTask, updateTask, deleteTask, fetchVersions } from "@/api";
+import NotificationPanel from "@/components/NotificationPanel/NotificationPanel";
+import { createTask, updateTask, deleteTask, fetchVersions, getUserHeader } from "@/api";
 import { isOverdue, filterTasksByRole, canSeeJiafangSource } from "@/utils";
 
 const Dashboard = dynamic(() => import("@/components/Dashboard"), { ssr: false });
@@ -52,6 +53,9 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
   const [modalReadOnly, setModalReadOnly] = useState(false);
   const [showMyTasks, setShowMyTasks] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotifType[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [members, setMembers] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState<string | null>(() => {
@@ -77,13 +81,60 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
   const toast = useToast();
   useNotifications();
 
-  // Check for overdue tasks on load and notify
+  // Check for overdue tasks on load and create notifications
   useEffect(() => {
+    if (!currentUser) return;
     const overdues = effectiveTasks.filter((t) => isOverdue(t));
     if (overdues.length > 0 && effectiveTasks.length > 0) {
       notify("任务逾期提醒", `共有 ${overdues.length} 个任务已逾期`);
     }
-  }, [effectiveTasks.length]);
+    // Create overdue/due_soon notifications
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    for (const t of effectiveTasks) {
+      if (!t.due || !t.assignees.length) continue;
+      const dueDate = new Date(t.due);
+      for (const a of t.assignees) {
+        if (dueDate < now) {
+          fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            body: JSON.stringify({ userName: a, type: "overdue", text: `任务「${t.title}」已逾期`, taskId: t.id }),
+          }).catch(() => {});
+        } else if (dueDate <= tomorrow) {
+          fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            body: JSON.stringify({ userName: a, type: "due_soon", text: `任务「${t.title}」将在24小时内到期`, taskId: t.id }),
+          }).catch(() => {});
+        }
+      }
+    }
+  }, [effectiveTasks.length, currentUser]);
+
+  // Fetch notifications + 30s polling
+  useEffect(() => {
+    if (!currentUser) return;
+    const controller = new AbortController();
+    const fetchNotifs = async () => {
+      try {
+        const [listRes, countRes] = await Promise.all([
+          fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}`, { headers: getUserHeader(), signal: controller.signal }),
+          fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}&unread=1`, { headers: getUserHeader(), signal: controller.signal }),
+        ]);
+        if (listRes.ok) {
+          setNotifications(await listRes.json());
+        }
+        if (countRes.ok) {
+          const { count } = await countRes.json();
+          setUnreadCount(count);
+        }
+      } catch { /* ignore poll errors */ }
+    };
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 30000);
+    return () => { clearInterval(interval); controller.abort(); };
+  }, [currentUser]);
 
   useEffect(() => {
     fetchVersions().then(setVersions).catch((err) => { console.error("Failed to fetch versions:", err); });
@@ -138,13 +189,53 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
   const handleSaveTask = useCallback(
     async (saved: Omit<Task, "id" | "created" | "updated" | "subtasks" | "comments">) => {
       try {
+        const oldAssignees = modalTask?.assignees || [];
+        const newAssignees = saved.assignees || [];
+        const addedAssignees = newAssignees.filter((a) => !oldAssignees.includes(a));
+
         if (modalTask?.id) {
           const updated = await updateTask(modalTask.id, saved);
           const newTasks = tasks.map((t) => (t.id === updated.id ? updated : t));
           setTasks(newTasks);
+
+          // Notify new assignees
+          for (const assignee of addedAssignees) {
+            if (assignee !== currentUser) {
+              try {
+                await fetch("/api/notifications", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...getUserHeader() },
+                  body: JSON.stringify({
+                    userName: assignee,
+                    type: "assigned",
+                    text: `${currentUser} 将任务「${saved.title}」分配给你`,
+                    taskId: modalTask.id,
+                  }),
+                });
+              } catch { /* ignore notification errors */ }
+            }
+          }
         } else {
           const created = await createTask(saved);
           setTasks([...tasks, created]);
+
+          // Notify initial assignees
+          for (const assignee of addedAssignees) {
+            if (assignee !== currentUser) {
+              try {
+                await fetch("/api/notifications", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...getUserHeader() },
+                  body: JSON.stringify({
+                    userName: assignee,
+                    type: "assigned",
+                    text: `${currentUser} 将任务「${saved.title}」分配给你`,
+                    taskId: created.id,
+                  }),
+                });
+              } catch { /* ignore */ }
+            }
+          }
         }
         toast.show("保存成功", "success");
       } catch (err) {
@@ -154,7 +245,7 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
       setModalTask(null);
       setModalReadOnly(false);
     },
-    [modalTask, tasks, toast],
+    [modalTask, tasks, toast, currentUser],
   );
 
   const handleDeleteTask = useCallback(
@@ -183,6 +274,35 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
     setModalReadOnly(false);
   }, []);
 
+  const handleMarkNotifRead = useCallback(async (id: number) => {
+    if (!currentUser) return;
+    try {
+      await fetch(`/api/notifications?id=${id}&user=${encodeURIComponent(currentUser)}`, { method: "PATCH", headers: getUserHeader() });
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch { /* ignore */ }
+  }, [currentUser]);
+
+  const handleMarkAllNotifRead = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      await fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}`, { method: "PATCH", headers: getUserHeader() });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch { /* ignore */ }
+  }, [currentUser]);
+
+  const handleClickNotif = useCallback((notif: NotifType) => {
+    if (notif.taskId) {
+      const task = tasks.find((t) => t.id === notif.taskId);
+      if (task) {
+        setModalTask(task);
+        setModalReadOnly(true);
+      }
+    }
+    setShowNotifications(false);
+  }, [tasks]);
+
   // Show login page if not logged in
   if (!currentUser) {
     return <LoginPage users={users} onLogin={handleLogin} />;
@@ -198,7 +318,18 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
         onLogout={handleLogout}
         isAdmin={isAdmin}
         onUserManagement={() => setShowUserManagement(true)}
+        unreadCount={unreadCount}
+        onBellClick={() => { setShowNotifications(!showNotifications); setShowMyTasks(false); }}
       />
+      {showNotifications && (
+        <NotificationPanel
+          notifications={notifications}
+          onMarkAllRead={handleMarkAllNotifRead}
+          onMarkRead={handleMarkNotifRead}
+          onClickNotif={handleClickNotif}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
       {showMyTasks && (
         <MyTasks tasks={effectiveTasks} currentUser={currentUser} onClose={() => setShowMyTasks(false)} onSelectTask={(t) => { setModalTask(t); setModalReadOnly(true); setShowMyTasks(false); }} onTasksChange={setTasks} />
       )}

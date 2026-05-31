@@ -1,6 +1,6 @@
 import { createClient } from "@libsql/client";
 import bcrypt from "bcryptjs";
-import type { Task, Subtask, Comment, Version } from "./types";
+import type { Task, Subtask, Comment, Version, TaskLink, LinkType } from "./types";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -66,6 +66,26 @@ async function ensureSchema() {
       created    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
     );
     CREATE INDEX IF NOT EXISTS idx_comments_task_id ON comments(task_id);
+    CREATE TABLE IF NOT EXISTS task_links (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id         INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      linked_task_id  INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      link_type       TEXT NOT NULL DEFAULT 'related',
+      created         TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(task_id, linked_task_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_links_task_id ON task_links(task_id);
+    CREATE INDEX IF NOT EXISTS idx_task_links_linked ON task_links(linked_task_id);
+    CREATE TABLE IF NOT EXISTS notifications (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_name  TEXT NOT NULL,
+      type       TEXT NOT NULL,
+      task_id    INTEGER REFERENCES tasks(id) ON DELETE SET NULL,
+      text       TEXT NOT NULL,
+      read       INTEGER NOT NULL DEFAULT 0,
+      created    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_name, read, created);
     CREATE TABLE IF NOT EXISTS users (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT NOT NULL UNIQUE,
@@ -171,7 +191,7 @@ async function getCommentRows(taskId: number) {
   return r.rows;
 }
 
-function recordToTask(row: Record<string, unknown>, subtasks: Subtask[] = [], comments: Comment[] = []): Task {
+function recordToTask(row: Record<string, unknown>, subtasks: Subtask[] = [], comments: Comment[] = [], linkedTasks: TaskLink[] = []): Task {
   return {
     id: row.id as number,
     title: row.title as string,
@@ -188,6 +208,7 @@ function recordToTask(row: Record<string, unknown>, subtasks: Subtask[] = [], co
     updated: row.updated as string,
     subtasks,
     comments,
+    linkedTasks,
   };
 }
 
@@ -282,9 +303,10 @@ export async function getUniqueAssignees(): Promise<string[]> {
 async function hydrateTasks(db: ReturnType<typeof getClient>, taskRows: Record<string, unknown>[]): Promise<Task[]> {
   const ids = taskRows.map((row) => row.id as number);
   const placeholders = ids.map(() => "?").join(",");
-  const [subsRes, commsRes] = await Promise.all([
+  const [subsRes, commsRes, linksRes] = await Promise.all([
     db.execute({ sql: `SELECT * FROM subtasks WHERE task_id IN (${placeholders}) ORDER BY task_id, sort_order`, args: ids }),
     db.execute({ sql: `SELECT * FROM comments WHERE task_id IN (${placeholders}) ORDER BY task_id, id`, args: ids }),
+    db.execute({ sql: `SELECT tl.*, t.title as linked_task_title FROM task_links tl JOIN tasks t ON t.id = tl.linked_task_id WHERE tl.task_id IN (${placeholders}) ORDER BY tl.task_id`, args: ids }),
   ]);
 
   const subsByTask = new Map<number, Subtask[]>();
@@ -301,10 +323,24 @@ async function hydrateTasks(db: ReturnType<typeof getClient>, taskRows: Record<s
     commsByTask.get(tid)!.push({ id: rr.id as number, taskId: tid, user: rr.user as string, text: rr.text as string, images: rr.images as string, created: rr.created as string });
   }
 
+  const linksByTask = new Map<number, TaskLink[]>();
+  for (const rr of linksRes.rows) {
+    const tid = rr.task_id as number;
+    if (!linksByTask.has(tid)) linksByTask.set(tid, []);
+    linksByTask.get(tid)!.push({
+      id: rr.id as number,
+      taskId: tid,
+      linkedTaskId: rr.linked_task_id as number,
+      linkType: rr.link_type as LinkType,
+      linkedTaskTitle: rr.linked_task_title as string,
+    });
+  }
+
   return taskRows.map((row) => recordToTask(
     row,
     subsByTask.get(row.id as number) || [],
     commsByTask.get(row.id as number) || [],
+    linksByTask.get(row.id as number) || [],
   ));
 }
 
@@ -602,4 +638,128 @@ export async function deleteVersion(id: number): Promise<boolean> {
   if ((cnt.rows[0].c as number) > 0) return false;
   const r = await db.execute({ sql: "DELETE FROM versions WHERE id = ?", args: [id] });
   return r.rowsAffected > 0;
+}
+
+// ── Task Links CRUD ──
+
+export async function getTaskLinks(taskId: number): Promise<TaskLink[]> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({
+    sql: "SELECT tl.*, t.title as linked_task_title FROM task_links tl JOIN tasks t ON t.id = tl.linked_task_id WHERE tl.task_id = ? ORDER BY tl.id",
+    args: [taskId],
+  });
+  return r.rows.map((rr) => ({
+    id: rr.id as number,
+    taskId: rr.task_id as number,
+    linkedTaskId: rr.linked_task_id as number,
+    linkType: rr.link_type as LinkType,
+    linkedTaskTitle: rr.linked_task_title as string,
+  }));
+}
+
+export async function createTaskLink(taskId: number, linkedTaskId: number, linkType: LinkType): Promise<TaskLink> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({
+    sql: "INSERT OR IGNORE INTO task_links (task_id, linked_task_id, link_type) VALUES (?, ?, ?) RETURNING *",
+    args: [taskId, linkedTaskId, linkType],
+  });
+  if (r.rows.length === 0) {
+    // Already exists, fetch the existing one
+    const existing = (await db.execute({
+      sql: "SELECT tl.*, t.title as linked_task_title FROM task_links tl JOIN tasks t ON t.id = tl.linked_task_id WHERE tl.task_id = ? AND tl.linked_task_id = ?",
+      args: [taskId, linkedTaskId],
+    })).rows[0];
+    return {
+      id: existing.id as number,
+      taskId: existing.task_id as number,
+      linkedTaskId: existing.linked_task_id as number,
+      linkType: existing.link_type as LinkType,
+      linkedTaskTitle: existing.linked_task_title as string,
+    };
+  }
+  const row = r.rows[0];
+  // Fetch title
+  const t = (await db.execute({ sql: "SELECT title FROM tasks WHERE id = ?", args: [linkedTaskId] })).rows[0];
+  return {
+    id: row.id as number,
+    taskId: row.task_id as number,
+    linkedTaskId: row.linked_task_id as number,
+    linkType: row.link_type as LinkType,
+    linkedTaskTitle: (t?.title as string) || "",
+  };
+}
+
+export async function deleteTaskLink(taskId: number, linkId: number): Promise<boolean> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({ sql: "DELETE FROM task_links WHERE id = ? AND task_id = ?", args: [linkId, taskId] });
+  return r.rowsAffected > 0;
+}
+
+// ── Notification CRUD ──
+
+export async function getNotifications(userName: string, limit: number = 20): Promise<{ id: number; userName: string; type: string; taskId: number | null; text: string; read: boolean; created: string }[]> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({
+    sql: "SELECT * FROM notifications WHERE user_name = ? ORDER BY created DESC LIMIT ?",
+    args: [userName, limit],
+  });
+  return r.rows.map((rr) => ({
+    id: rr.id as number,
+    userName: rr.user_name as string,
+    type: rr.type as string,
+    taskId: rr.task_id as number | null,
+    text: rr.text as string,
+    read: (rr.read as number) === 1,
+    created: rr.created as string,
+  }));
+}
+
+export async function getUnreadNotificationCount(userName: string): Promise<number> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({
+    sql: "SELECT COUNT(*) as cnt FROM notifications WHERE user_name = ? AND read = 0",
+    args: [userName],
+  });
+  return r.rows[0].cnt as number;
+}
+
+export async function createNotification(userName: string, type: string, text: string, taskId: number | null = null): Promise<void> {
+  await init();
+  const db = getClient();
+  // Deduplicate: skip if same notification exists for same user+task+type in last hour
+  const recent = await db.execute({
+    sql: "SELECT id FROM notifications WHERE user_name = ? AND type = ? AND task_id = ? AND created > datetime('now', '-1 hour')",
+    args: [userName, type, taskId],
+  });
+  if (recent.rows.length === 0) {
+    await db.execute({
+      sql: "INSERT INTO notifications (user_name, type, task_id, text) VALUES (?, ?, ?, ?)",
+      args: [userName, type, taskId, text],
+    });
+  }
+}
+
+export async function markNotificationRead(id: number, userName: string): Promise<boolean> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({
+    sql: "UPDATE notifications SET read = 1 WHERE id = ? AND user_name = ?",
+    args: [id, userName],
+  });
+  return r.rowsAffected > 0;
+}
+
+export async function markAllNotificationsRead(userName: string): Promise<number> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({
+    sql: "UPDATE notifications SET read = 1 WHERE user_name = ? AND read = 0",
+    args: [userName],
+  });
+  return r.rowsAffected;
 }

@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, memo } from "react";
 import type { Task } from "@/lib/types";
 import { IconCalendar, IconWarning, IconCheckSquare, IconComment, IconSend } from "@/components/Icons";
 import { getInitials, getAssigneeColor, formatDate, isOverdue, overdueDays, isDueSoon } from "@/utils";
-import { createComment } from "@/api";
+import { createComment, getUserHeader } from "@/api";
 import styles from "./TaskCard.module.css";
 
 const priorityColor: Record<string, string> = {
@@ -34,6 +34,7 @@ interface TaskCardProps {
   versionName?: string;
   currentUser?: string;
   onSelect?: (task: Task, e: React.MouseEvent) => void;
+  onLinkView?: (taskId: number, e: React.MouseEvent) => void;
 }
 
 const TaskCard = memo(function TaskCard({
@@ -52,6 +53,7 @@ const TaskCard = memo(function TaskCard({
   versionName,
   currentUser = "张三",
   onSelect,
+  onLinkView,
 }: TaskCardProps) {
   const overdue = isOverdue(task);
   const dueSoon = isDueSoon(task);
@@ -72,10 +74,26 @@ const TaskCard = memo(function TaskCard({
       setCommentText("");
       setShowComment(false);
       onCommentAdded?.();
+      // Notify other assignees
+      const others = (task.assignees || []).filter((a) => a !== currentUser);
+      for (const p of others) {
+        try {
+          await fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            body: JSON.stringify({
+              userName: p,
+              type: "commented",
+              text: `${currentUser} 评论了任务「${task.title}」`,
+              taskId: task.id,
+            }),
+          });
+        } catch { /* ignore */ }
+      }
     } catch (err) {
       console.error("Failed to add comment:", err);
     }
-  }, [task.id, commentText, onCommentAdded]);
+  }, [task.id, task.title, task.assignees, commentText, onCommentAdded, currentUser]);
 
   return (
     <div
@@ -127,6 +145,16 @@ const TaskCard = memo(function TaskCard({
       <div className={styles.tags}>
         <span className={`${styles.tag} ${styles.tagSource}`}>{sourceLabel[task.source]}</span>
         {versionName && <span className={styles.versionTag}>{versionName}</span>}
+        {task.linkedTasks && task.linkedTasks.map((link) => (
+          <span
+            key={link.id}
+            className={`${styles.tag} ${link.linkType === "blocks" ? styles.tagBlocks : link.linkType === "blocked_by" ? styles.tagBlockedBy : styles.tagRelated}`}
+            onClick={(e) => { e.stopPropagation(); onLinkView?.(link.linkedTaskId, e); }}
+            title={link.linkedTaskTitle ? `跳转到「${link.linkedTaskTitle}」` : undefined}
+          >
+            {link.linkType === "blocks" ? "阻塞" : link.linkType === "blocked_by" ? "被阻塞" : "关联"}
+          </span>
+        ))}
         {task.requester && <span className={`${styles.tag} ${styles.tagRequester}`}>{task.requester}</span>}
         {isVerifying && <span className={styles.verifyingBadge}>待甲方验收</span>}
         {dueSoon && <span className={styles.dueSoonBadge}>即将到期</span>}

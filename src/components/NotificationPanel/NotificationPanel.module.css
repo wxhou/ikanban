@@ -1,0 +1,103 @@
+.panel {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  width: 360px;
+  max-height: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.markAllBtn {
+  font-size: var(--text-xs);
+  color: var(--accent);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.markAllBtn:hover {
+  text-decoration: underline;
+}
+
+.list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  transition: background .15s;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.item:hover {
+  background: var(--bg);
+}
+
+.unread {
+  background: color-mix(in oklab, var(--surface), var(--accent) 3%);
+}
+
+.itemDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 6px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+.unread .itemDot {
+  opacity: 1;
+}
+
+.itemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemText {
+  font-size: var(--text-sm);
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.itemMeta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 2px;
+}

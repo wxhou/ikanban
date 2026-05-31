@@ -30,6 +30,7 @@ interface KanbanColumnProps {
   currentUser?: string;
   selectedIds?: Set<number>;
   onSelectTask?: (task: Task, e: React.MouseEvent) => void;
+  onLinkView?: (taskId: number, e: React.MouseEvent) => void;
 }
 
 const KanbanColumn = memo(function KanbanColumn({
@@ -51,6 +52,7 @@ const KanbanColumn = memo(function KanbanColumn({
   currentUser,
   selectedIds,
   onSelectTask,
+  onLinkView,
 }: KanbanColumnProps) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddTitle, setQuickAddTitle] = useState("");
@@ -138,6 +140,7 @@ const KanbanColumn = memo(function KanbanColumn({
               versionName={getVersionName?.(task.versionId)}
               currentUser={currentUser}
               onSelect={onSelectTask}
+              onLinkView={onLinkView}
             />
           ))
         )}

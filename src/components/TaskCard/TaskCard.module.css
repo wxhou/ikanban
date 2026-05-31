@@ -141,6 +141,51 @@
   color: #5b21b6;
 }
 
+.tagBlocks {
+  background: #fee2e2;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tagBlocks:hover {
+  background: #fecaca;
+}
+
+.tagBlockedBy {
+  background: #fef3c7;
+  color: #b45309;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tagBlockedBy:hover {
+  background: #fde68a;
+}
+
+.tagRelated {
+  background: #e0f2fe;
+  color: #0369a1;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tagRelated:hover {
+  background: #bae6fd;
+}
+
 .versionTag {
   font-size: 10px;
   font-weight: 600;
