@@ -49,6 +49,9 @@ data/*.db-wal
 .claude/
 .gstack/
 .playwright-mcp/
+.codegraph/
+.omo/
+.opencode/
 
 # screenshots
 *.png
