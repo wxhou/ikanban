@@ -111,6 +111,17 @@ async function ensureSchema() {
   } catch (_) {
     // column already exists
   }
+  // Migration: add audience column to notifications if missing
+  try {
+    await db.execute("ALTER TABLE notifications ADD COLUMN audience TEXT NOT NULL DEFAULT 'team'");
+  } catch (_) {
+    // column already exists
+  }
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_notifications_audience ON notifications(audience, created)");
+  } catch (_) {
+    // index already exists
+  }
   await seedIfEmpty();
 }
 
@@ -240,13 +251,14 @@ export interface PaginatedResult {
   pageSize: number;
 }
 
-export async function getAllTasks(opts?: { 
-  page?: number; 
-  pageSize?: number; 
+export async function getAllTasks(opts?: {
+  page?: number;
+  pageSize?: number;
   source?: string;
   assignee?: string;
   createdAfter?: string;
   createdBefore?: string;
+  versionId?: number;
 }): Promise<Task[] | PaginatedResult> {
   await init();
   const db = getClient();
@@ -259,6 +271,10 @@ export async function getAllTasks(opts?: {
   if (opts?.source) {
     conditions.push("tasks.source = ?");
     whereArgs.push(opts.source);
+  }
+  if (opts?.versionId !== undefined) {
+    conditions.push("tasks.version_id = ?");
+    whereArgs.push(String(opts.versionId));
   }
   if (opts?.assignee) {
     joinClause = "JOIN json_each(tasks.assignees)";
@@ -368,6 +384,12 @@ export async function updateTask(id: number, fields: Partial<Omit<Task, "id" | "
   await init();
   const db = getClient();
 
+  // Capture old status before update for the verifying-transition side effect.
+  const oldRow = (await db.execute({ sql: "SELECT status, title, requester FROM tasks WHERE id = ?", args: [id] })).rows[0];
+  const oldStatus = (oldRow?.status as string) ?? "";
+  const oldTitle = (oldRow?.title as string) ?? "";
+  const oldRequester = (oldRow?.requester as string | null) ?? null;
+
   const sets: string[] = [];
   const args: (string | number | null)[] = [];
   for (const [key, value] of Object.entries(fields)) {
@@ -386,7 +408,14 @@ export async function updateTask(id: number, fields: Partial<Omit<Task, "id" | "
   const r = await db.execute({ sql: `UPDATE tasks SET ${sets.join(", ")}, updated = date('now') WHERE id = ? RETURNING *`, args });
   if (r.rows.length === 0) return null;
   const [subs, comms] = await Promise.all([getSubtaskRows(id), getCommentRows(id)]);
-  return recordToTask(r.rows[0] as Record<string, unknown>, subs.map((rr) => ({ id: rr.id as number, taskId: rr.task_id as number, text: rr.text as string, done: (rr.done as number) === 1, sortOrder: rr.sort_order as number })), comms.map((rr) => ({ id: rr.id as number, taskId: rr.task_id as number, user: rr.user as string, text: rr.text as string, images: rr.images as string, created: rr.created as string })));
+  const updated = recordToTask(r.rows[0] as Record<string, unknown>, subs.map((rr) => ({ id: rr.id as number, taskId: rr.task_id as number, text: rr.text as string, done: (rr.done as number) === 1, sortOrder: rr.sort_order as number })), comms.map((rr) => ({ id: rr.id as number, taskId: rr.task_id as number, user: rr.user as string, text: rr.text as string, images: rr.images as string, created: rr.created as string })));
+
+  // Side effect: notify portal clients when a task transitions into `verifying`.
+  if (oldStatus !== updated.status) {
+    const synthetic: Task = { ...updated, title: oldTitle || updated.title, requester: oldRequester ?? updated.requester };
+    await notifyOnVerifying(synthetic, oldStatus, updated.status);
+  }
+  return updated;
 }
 
 export async function batchUpdateTasks(ids: number[], updates: { status?: string; priority?: string; assignees?: string[] }): Promise<number> {
@@ -468,6 +497,23 @@ export async function createComment(taskId: number, user: string, text: string, 
   const r = await db.execute({ sql: "INSERT INTO comments (task_id, user, text, images) VALUES (?, ?, ?, ?) RETURNING *", args: [taskId, user, text, JSON.stringify(images)] });
   await db.execute({ sql: "UPDATE tasks SET updated = date('now') WHERE id = ?", args: [taskId] });
   const row = r.rows[0];
+
+  const taskMeta = (await db.execute({ sql: "SELECT title, assignees FROM tasks WHERE id = ?", args: [taskId] })).rows[0];
+  if (taskMeta) {
+    const assignees: string[] = JSON.parse((taskMeta.assignees as string) ?? "[]");
+    const title = taskMeta.title as string;
+    for (const assignee of assignees) {
+      if (assignee === user) continue;
+      await createNotification(
+        assignee,
+        "commented",
+        `${user} 评论了任务「${title}」`,
+        taskId,
+        "team",
+      );
+    }
+  }
+
   return { id: row.id as number, taskId: row.task_id as number, user: row.user as string, text: row.text as string, images: row.images as string, created: row.created as string };
 }
 
@@ -710,6 +756,32 @@ export async function deleteTaskLink(taskId: number, linkId: number): Promise<bo
 
 // ── Notification CRUD ──
 
+export async function getPortalNotifications(limit: number = 50): Promise<{ id: number; userName: string; type: string; taskId: number | null; text: string; read: boolean; created: string; audience: string }[]> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({
+    sql: "SELECT * FROM notifications WHERE audience = 'portal' ORDER BY created DESC LIMIT ?",
+    args: [limit],
+  });
+  return r.rows.map((rr) => ({
+    id: rr.id as number,
+    userName: rr.user_name as string,
+    type: rr.type as string,
+    taskId: rr.task_id as number | null,
+    text: rr.text as string,
+    read: (rr.read as number) === 1,
+    created: rr.created as string,
+    audience: rr.audience as string,
+  }));
+}
+
+export async function getUnreadPortalNotificationCount(): Promise<number> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({ sql: "SELECT COUNT(*) AS c FROM notifications WHERE audience = 'portal' AND read = 0" });
+  return Number((r.rows[0] as unknown as { c: number }).c);
+}
+
 export async function getNotifications(userName: string, limit: number = 20): Promise<{ id: number; userName: string; type: string; taskId: number | null; text: string; read: boolean; created: string }[]> {
   await init();
   const db = getClient();
@@ -738,20 +810,36 @@ export async function getUnreadNotificationCount(userName: string): Promise<numb
   return r.rows[0].cnt as number;
 }
 
-export async function createNotification(userName: string, type: string, text: string, taskId: number | null = null): Promise<void> {
+export async function createNotification(userName: string, type: string, text: string, taskId: number | null = null, audience: "team" | "portal" = "team"): Promise<void> {
   await init();
   const db = getClient();
-  // Deduplicate: skip if same notification exists for same user+task+type in last hour
+  // Deduplicate: skip if same notification exists for same user+task+type+audience in last hour
   const recent = await db.execute({
-    sql: "SELECT id FROM notifications WHERE user_name = ? AND type = ? AND task_id = ? AND created > datetime('now', '-1 hour')",
-    args: [userName, type, taskId],
+    sql: "SELECT id FROM notifications WHERE user_name = ? AND type = ? AND task_id = ? AND audience = ? AND created > datetime('now', '-1 hour')",
+    args: [userName, type, taskId, audience],
   });
   if (recent.rows.length === 0) {
     await db.execute({
-      sql: "INSERT INTO notifications (user_name, type, task_id, text) VALUES (?, ?, ?, ?)",
-      args: [userName, type, taskId, text],
+      sql: "INSERT INTO notifications (user_name, type, task_id, text, audience) VALUES (?, ?, ?, ?, ?)",
+      args: [userName, type, taskId, text, audience],
     });
   }
+}
+
+// Side-effect for /portal clients: when a task transitions into `verifying`,
+// the team moves it to "待验收" expecting client acceptance. Notify the
+// portal so the client sees a "待我验收" badge.
+export async function notifyOnVerifying(task: Task, oldStatus: string, newStatus: string): Promise<void> {
+  if (oldStatus === newStatus) return;
+  if (newStatus !== "verifying" || oldStatus === "verifying") return;
+  const portalUser = task.requester || "客户";
+  await createNotification(
+    portalUser,
+    "verifying_pending",
+    `任务「${task.title}」进入待验收`,
+    task.id,
+    "portal"
+  );
 }
 
 export async function markNotificationRead(id: number, userName: string): Promise<boolean> {

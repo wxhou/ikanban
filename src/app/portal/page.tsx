@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import type { Task, Version, TaskStatus } from "@/lib/types";
+import type { Task, Version, TaskStatus, Notification } from "@/lib/types";
 import { COLUMNS } from "@/lib/types";
 import { formatDate, getAssigneeColor, isOverdue, overdueDays } from "@/utils";
 import styles from "./page.module.css";
@@ -30,7 +30,11 @@ export default function PortalPage() {
   const [assignees, setAssignees] = useState<string[]>([]);
   const [authChecked, setAuthChecked] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [portalNotifications, setPortalNotifications] = useState<Notification[]>([]);
+  const [unreadPortalNotifs, setUnreadPortalNotifs] = useState(0);
+  const [showNotifList, setShowNotifList] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const notifPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auth gate — resolve session via /api/auth/me; the `sid` cookie auto-flows.
   useEffect(() => {
@@ -113,6 +117,47 @@ export default function PortalPage() {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [startPolling]);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/portal/notifications");
+      if (!res.ok) return;
+      const data = await res.json();
+      setPortalNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+      setUnreadPortalNotifs(typeof data.unread === "number" ? data.unread : 0);
+    } catch (e) {
+      console.warn("Portal notification poll failed:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authChecked || !userName) return;
+    const startNotifPolling = () => {
+      if (notifPollingRef.current) return;
+      const tick = async () => {
+        if (document.hidden) return;
+        await fetchNotifications();
+      };
+      void tick();
+      notifPollingRef.current = setInterval(tick, 30_000);
+    };
+    const stopNotifPolling = () => {
+      if (notifPollingRef.current) {
+        clearInterval(notifPollingRef.current);
+        notifPollingRef.current = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.hidden) stopNotifPolling();
+      else startNotifPolling();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    startNotifPolling();
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      stopNotifPolling();
+    };
+  }, [authChecked, userName, fetchNotifications]);
 
   useEffect(() => {
     if (!authChecked || !userName) return;
@@ -197,7 +242,7 @@ export default function PortalPage() {
       const res = await fetch(`/api/tasks/${taskId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: "甲方", text }),
+        body: JSON.stringify({ user: userName || "客户", text }),
       });
       if (res.ok) {
         const newComment = await res.json();
@@ -238,18 +283,54 @@ export default function PortalPage() {
             {" · "}更新于 {new Date().toLocaleDateString("zh-CN")}
           </p>
         </div>
-        <select
-          className={styles.versionSelect}
-          value={selectedVersionId ?? ""}
-          onChange={(e) => setSelectedVersionId(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">全部版本</option>
-          {versions.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}{v.status === "active" ? " · 当前" : ""}
-            </option>
-          ))}
-        </select>
+        <div className={styles.headerRight}>
+          <div className={styles.notifWrap}>
+            <button
+              type="button"
+              className={styles.bellBtn}
+              aria-label="通知"
+              onClick={() => setShowNotifList((v) => !v)}
+            >
+              <span className={styles.bellIcon}>🔔</span>
+              {unreadPortalNotifs > 0 && (
+                <span className={styles.badge}>{unreadPortalNotifs}</span>
+              )}
+            </button>
+            {showNotifList && (
+              <div className={styles.notifPopover}>
+                <div className={styles.notifHeader}>
+                  待我验收 {unreadPortalNotifs}
+                </div>
+                {portalNotifications.length === 0 ? (
+                  <div className={styles.notifEmpty}>暂无通知</div>
+                ) : (
+                  <ul className={styles.notifList}>
+                    {portalNotifications.map((n) => (
+                      <li key={n.id} className={styles.notifItem}>
+                        <span className={styles.notifText}>{n.text}</span>
+                        <span className={styles.notifTime}>
+                          {new Date(n.created).toLocaleString("zh-CN", { hour12: false })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+          <select
+            className={styles.versionSelect}
+            value={selectedVersionId ?? ""}
+            onChange={(e) => setSelectedVersionId(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">全部版本</option>
+            {versions.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}{v.status === "active" ? " · 当前" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
       <div className={styles.filterRow}>
@@ -272,6 +353,21 @@ export default function PortalPage() {
           </>
         )}
         {isRefreshing && <span className={styles.refreshIndicator}>⟳</span>}
+        <a
+          className={styles.exportBtn}
+          href={`/api/portal/export${(() => {
+            const params = new URLSearchParams();
+            if (selectedVersionId) params.set("v", String(selectedVersionId));
+            if (assigneeFilter) params.set("a", assigneeFilter);
+            if (dateRangeStart) params.set("from", dateRangeStart);
+            if (dateRangeEnd) params.set("to", dateRangeEnd);
+            const qs = params.toString();
+            return qs ? `?${qs}` : "";
+          })()}`}
+          download
+        >
+          导出 CSV
+        </a>
       </div>
 
       {/* Stats row */}

@@ -33,6 +33,7 @@ export interface Notification {
   text: string;
   read: boolean;
   created: string;
+  audience: "team" | "portal";
 }
 
 export type NotificationType = "assigned" | "due_soon" | "overdue" | "commented" | "completed";
