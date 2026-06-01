@@ -6,7 +6,7 @@ import { COLUMNS, JIAFANG_SOURCES } from "@/lib/types";
 import { useToast } from "@/lib/toast-context";
 import { IconX, IconPlus, IconSend, IconTrash } from "@/components/Icons";
 import { getInitials, getAssigneeColor } from "@/utils";
-import { createSubtask, updateSubtask, deleteSubtask, createComment, deleteComment, getUserHeader } from "@/api";
+import { createSubtask, updateSubtask, deleteSubtask, createComment, deleteComment } from "@/api";
 import styles from "./TaskModal.module.css";
 
 type TabId = "info" | "subtasks" | "comments" | "links";
@@ -178,7 +178,7 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
         try {
           await fetch("/api/notifications", {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               userName: p,
               type: "commented",
@@ -212,7 +212,7 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
     try {
       const res = await fetch(`/api/tasks/${task.id}/links`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...getUserHeader() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ linkedTaskId, linkType }),
       });
       if (res.ok) {
@@ -229,7 +229,7 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
   const handleRemoveLink = useCallback(async (linkId: number) => {
     if (!task.id) return;
     try {
-      const res = await fetch(`/api/tasks/${task.id}/links?linkId=${linkId}`, { method: "DELETE", headers: getUserHeader() });
+      const res = await fetch(`/api/tasks/${task.id}/links?linkId=${linkId}`, { method: "DELETE" });
       if (res.ok) {
         setLinkedTasks((prev) => prev.filter((l) => l.id !== linkId));
       }

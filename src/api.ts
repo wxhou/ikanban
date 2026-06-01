@@ -1,14 +1,6 @@
 import type { Task, Subtask, Comment, Version } from "@/lib/types";
 
-function getUserHeader(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const user = localStorage.getItem("currentUser");
-  return user ? { "x-user": btoa(unescape(encodeURIComponent(user))) } : {};
-}
-
-export { getUserHeader };
-
-const headers = { "Content-Type": "application/json" } as Record<string, string>;
+const jsonHeaders = { "Content-Type": "application/json" } as Record<string, string>;
 
 // ── Version API ──
 
@@ -19,26 +11,26 @@ export async function fetchVersions(): Promise<Version[]> {
 }
 
 export async function createVersion(name: string, description: string = ""): Promise<Version> {
-  const res = await fetch("/api/versions", { method: "POST", headers: { ...headers, ...getUserHeader() }, body: JSON.stringify({ name, description }) });
+  const res = await fetch("/api/versions", { method: "POST", headers: jsonHeaders, body: JSON.stringify({ name, description }) });
   if (!res.ok) throw new Error("Failed to create version");
   return res.json();
 }
 
 export async function updateVersion(id: number, fields: { name?: string; status?: string; description?: string }): Promise<Version> {
-  const res = await fetch(`/api/versions/${id}`, { method: "PATCH", headers: { ...headers, ...getUserHeader() }, body: JSON.stringify(fields) });
+  const res = await fetch(`/api/versions/${id}`, { method: "PATCH", headers: jsonHeaders, body: JSON.stringify(fields) });
   if (!res.ok) throw new Error("Failed to update version");
   return res.json();
 }
 
 export async function deleteVersion(id: number): Promise<void> {
-  const res = await fetch(`/api/versions/${id}`, { method: "DELETE", headers: getUserHeader() });
+  const res = await fetch(`/api/versions/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete version");
 }
 
 // ── Task API ──
 
 export async function fetchTasks(): Promise<Task[]> {
-  const res = await fetch("/api/tasks", { headers: getUserHeader() });
+  const res = await fetch("/api/tasks");
   if (!res.ok) throw new Error("Failed to fetch tasks");
   return res.json();
 }
@@ -48,7 +40,7 @@ export async function createTask(
 ): Promise<Task> {
   const res = await fetch("/api/tasks", {
     method: "POST",
-    headers: { ...headers, ...getUserHeader() },
+    headers: jsonHeaders,
     body: JSON.stringify(task),
   });
   if (!res.ok) throw new Error("Failed to create task");
@@ -61,7 +53,7 @@ export async function updateTask(
 ): Promise<Task> {
   const res = await fetch(`/api/tasks/${id}`, {
     method: "PATCH",
-    headers: { ...headers, ...getUserHeader() },
+    headers: jsonHeaders,
     body: JSON.stringify(fields),
   });
   if (!res.ok) throw new Error("Failed to update task");
@@ -69,7 +61,7 @@ export async function updateTask(
 }
 
 export async function deleteTask(id: number): Promise<void> {
-  const res = await fetch(`/api/tasks/${id}`, { method: "DELETE", headers: getUserHeader() });
+  const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete task");
 }
 
@@ -78,7 +70,7 @@ export async function deleteTask(id: number): Promise<void> {
 export async function createSubtask(taskId: number, text: string): Promise<Subtask> {
   const res = await fetch(`/api/tasks/${taskId}/subtasks`, {
     method: "POST",
-    headers: { ...headers, ...getUserHeader() },
+    headers: jsonHeaders,
     body: JSON.stringify({ text }),
   });
   if (!res.ok) throw new Error("Failed to create subtask");
@@ -88,7 +80,7 @@ export async function createSubtask(taskId: number, text: string): Promise<Subta
 export async function updateSubtask(taskId: number, subtaskId: number, fields: { text?: string; done?: boolean }): Promise<Subtask> {
   const res = await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
     method: "PATCH",
-    headers: { ...headers, ...getUserHeader() },
+    headers: jsonHeaders,
     body: JSON.stringify(fields),
   });
   if (!res.ok) throw new Error("Failed to update subtask");
@@ -96,7 +88,7 @@ export async function updateSubtask(taskId: number, subtaskId: number, fields: {
 }
 
 export async function deleteSubtask(taskId: number, subtaskId: number): Promise<void> {
-  const res = await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, { method: "DELETE", headers: getUserHeader() });
+  const res = await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete subtask");
 }
 
@@ -105,7 +97,7 @@ export async function deleteSubtask(taskId: number, subtaskId: number): Promise<
 export async function createComment(taskId: number, user: string, text: string, images: string[] = []): Promise<Comment> {
   const res = await fetch(`/api/tasks/${taskId}/comments`, {
     method: "POST",
-    headers: { ...headers, ...getUserHeader() },
+    headers: jsonHeaders,
     body: JSON.stringify({ user, text, images }),
   });
   if (!res.ok) throw new Error("Failed to create comment");
@@ -113,6 +105,6 @@ export async function createComment(taskId: number, user: string, text: string, 
 }
 
 export async function deleteComment(taskId: number, commentId: number): Promise<void> {
-  const res = await fetch(`/api/tasks/${taskId}/comments/${commentId}`, { method: "DELETE", headers: getUserHeader() });
+  const res = await fetch(`/api/tasks/${taskId}/comments/${commentId}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete comment");
 }

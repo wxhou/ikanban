@@ -9,7 +9,7 @@ import KanbanBoard from "@/components/KanbanBoard";
 import VersionPage from "@/components/VersionPage";
 import LoginPage from "@/components/LoginPage";
 import NotificationPanel from "@/components/NotificationPanel/NotificationPanel";
-import { createTask, updateTask, deleteTask, fetchVersions, getUserHeader } from "@/api";
+import { createTask, updateTask, deleteTask, fetchVersions } from "@/api";
 import { isOverdue, filterTasksByRole, canSeeJiafangSource } from "@/utils";
 
 const Dashboard = dynamic(() => import("@/components/Dashboard"), { ssr: false });
@@ -58,17 +58,32 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [members, setMembers] = useState<string[]>([]);
-  const [currentUser, setCurrentUser] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("currentUser");
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  const currentUserRole = useMemo(() => {
-    if (!currentUser) return null;
-    return users.find((u) => u.name === currentUser)?.role ?? null;
-  }, [currentUser, users]);
+  // Resolve current session via cookie on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUser(data.name);
+          setCurrentUserRole(data.role);
+        }
+      } catch {
+        /* network error; treat as not logged in */
+      } finally {
+        if (!cancelled) setAuthChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
@@ -88,7 +103,6 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
     if (overdues.length > 0 && effectiveTasks.length > 0) {
       notify("任务逾期提醒", `共有 ${overdues.length} 个任务已逾期`);
     }
-    // Create overdue/due_soon notifications
     const now = new Date();
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     for (const t of effectiveTasks) {
@@ -98,13 +112,13 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
         if (dueDate < now) {
           fetch("/api/notifications", {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userName: a, type: "overdue", text: `任务「${t.title}」已逾期`, taskId: t.id }),
           }).catch(() => {});
         } else if (dueDate <= tomorrow) {
           fetch("/api/notifications", {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userName: a, type: "due_soon", text: `任务「${t.title}」将在24小时内到期`, taskId: t.id }),
           }).catch(() => {});
         }
@@ -119,8 +133,8 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
     const fetchNotifs = async () => {
       try {
         const [listRes, countRes] = await Promise.all([
-          fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}`, { headers: getUserHeader(), signal: controller.signal }),
-          fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}&unread=1`, { headers: getUserHeader(), signal: controller.signal }),
+          fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}`, { signal: controller.signal }),
+          fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}&unread=1`, { signal: controller.signal }),
         ]);
         if (listRes.ok) {
           setNotifications(await listRes.json());
@@ -146,16 +160,21 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
 
   const activeVersion = useMemo(() => versions.find((v) => v.id === activeVersionId), [versions, activeVersionId]);
   const isReadonly = activeVersion?.status === "closed";
-  const isAdmin = useMemo(() => users.find((u) => u.name === currentUser)?.role === "admin", [users, currentUser]);
+  const isAdmin = currentUserRole === "admin";
 
   const handleLogin = useCallback((user: string) => {
     setCurrentUser(user);
-    localStorage.setItem("currentUser", user);
+    fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((data) => {
+      if (data) setCurrentUserRole(data.role);
+    }).catch(() => {});
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch { /* ignore */ }
     setCurrentUser(null);
-    localStorage.removeItem("currentUser");
+    setCurrentUserRole(null);
     setShowUserManagement(false);
   }, []);
 
@@ -198,13 +217,12 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
           const newTasks = tasks.map((t) => (t.id === updated.id ? updated : t));
           setTasks(newTasks);
 
-          // Notify new assignees
           for (const assignee of addedAssignees) {
             if (assignee !== currentUser) {
               try {
                 await fetch("/api/notifications", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json", ...getUserHeader() },
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     userName: assignee,
                     type: "assigned",
@@ -219,13 +237,12 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
           const created = await createTask(saved);
           setTasks([...tasks, created]);
 
-          // Notify initial assignees
           for (const assignee of addedAssignees) {
             if (assignee !== currentUser) {
               try {
                 await fetch("/api/notifications", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json", ...getUserHeader() },
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     userName: assignee,
                     type: "assigned",
@@ -277,7 +294,7 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
   const handleMarkNotifRead = useCallback(async (id: number) => {
     if (!currentUser) return;
     try {
-      await fetch(`/api/notifications?id=${id}&user=${encodeURIComponent(currentUser)}`, { method: "PATCH", headers: getUserHeader() });
+      await fetch(`/api/notifications?id=${id}&user=${encodeURIComponent(currentUser)}`, { method: "PATCH" });
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch { /* ignore */ }
@@ -286,7 +303,7 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
   const handleMarkAllNotifRead = useCallback(async () => {
     if (!currentUser) return;
     try {
-      await fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}`, { method: "PATCH", headers: getUserHeader() });
+      await fetch(`/api/notifications?user=${encodeURIComponent(currentUser)}`, { method: "PATCH" });
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch { /* ignore */ }
@@ -303,7 +320,14 @@ function AppInner({ initialTasks, initialUsers }: AppProps) {
     setShowNotifications(false);
   }, [tasks]);
 
-  // Show login page if not logged in
+  if (!authChecked) {
+    return (
+      <div className="app-shell" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--meta)" }}>
+        正在加载…
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return <LoginPage users={users} onLogin={handleLogin} />;
   }

@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, memo } from "react";
 import type { Task } from "@/lib/types";
 import { IconCalendar, IconWarning, IconCheckSquare, IconComment, IconSend } from "@/components/Icons";
 import { getInitials, getAssigneeColor, formatDate, isOverdue, overdueDays, isDueSoon } from "@/utils";
-import { createComment, getUserHeader } from "@/api";
+import { createComment } from "@/api";
 import styles from "./TaskCard.module.css";
 
 const priorityColor: Record<string, string> = {
@@ -80,7 +80,7 @@ const TaskCard = memo(function TaskCard({
         try {
           await fetch("/api/notifications", {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getUserHeader() },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               userName: p,
               type: "commented",

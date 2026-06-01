@@ -1,29 +1,27 @@
-import { getUserByName } from "@/lib/db";
+import { cookies } from "next/headers";
+import { findSessionByToken, renewSessionIfExpiring, getUserRole } from "@/lib/db";
 
-function decodeUser(value: string): string {
-  try {
-    return decodeURIComponent(escape(atob(value)));
-  } catch {
-    return value;
-  }
+// `req` is kept for API compat with route handlers; identity now comes from
+// the `sid` httpOnly cookie via next/headers cookies(), not from the request.
+async function resolveSession(): Promise<{ name: string; role: string } | null> {
+  const sid = (await cookies()).get("sid")?.value;
+  if (!sid) return null;
+  const session = await findSessionByToken(sid);
+  if (!session) return null;
+  await renewSessionIfExpiring(sid);
+  return getUserRole(session.userId);
 }
 
-export function getRequestUser(req: Request): string | null {
-  const encoded = req.headers.get("x-user");
-  if (!encoded) return null;
-  return decodeUser(encoded);
+export async function getRequestUser(_req: Request): Promise<string | null> {
+  void _req; // retained for route-handler API compat; identity now comes from `sid` cookie
+  return (await resolveSession())?.name ?? null;
 }
 
 export async function requireUser(req: Request): Promise<string | null> {
-  const user = getRequestUser(req);
-  if (!user) return null;
-  const exists = await getUserByName(user);
-  return exists ? user : null;
+  return getRequestUser(req);
 }
 
-export async function getValidatedUser(req: Request): Promise<{ name: string; role: string } | null> {
-  const name = getRequestUser(req);
-  if (!name) return null;
-  const user = await getUserByName(name);
-  return user ? { name: user.name, role: user.role } : null;
+export async function getValidatedUser(_req: Request): Promise<{ name: string; role: string } | null> {
+  void _req; // retained for route-handler API compat; identity now comes from `sid` cookie
+  return resolveSession();
 }

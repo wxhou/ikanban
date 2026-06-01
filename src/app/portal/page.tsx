@@ -32,18 +32,24 @@ export default function PortalPage() {
   const [userName, setUserName] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Auth gate — check localStorage for logged-in user
+  // Auth gate — resolve session via /api/auth/me; the `sid` cookie auto-flows.
   useEffect(() => {
-    const stored = localStorage.getItem("ikanban_user");
-    if (stored) {
+    let cancelled = false;
+    (async () => {
       try {
-        const parsed = JSON.parse(stored);
-        setUserName(parsed.name || stored);
+        const res = await fetch("/api/auth/me");
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setUserName(data.name);
+        }
       } catch {
-        setUserName(stored);
+        /* network error; treated as not logged in below */
+      } finally {
+        if (!cancelled) setAuthChecked(true);
       }
-    }
-    setAuthChecked(true);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Redirect to login if not authenticated
@@ -52,11 +58,6 @@ export default function PortalPage() {
       window.location.href = "/";
     }
   }, [authChecked, userName]);
-
-  const userHeaders = useMemo((): Record<string, string> => {
-    if (!userName) return {};
-    return { "x-user": btoa(unescape(encodeURIComponent(userName))) };
-  }, [userName]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -81,7 +82,7 @@ export default function PortalPage() {
       if (document.hidden) return;
       setIsRefreshing(true);
       try {
-        const res = await fetch("/api/portal/tasks", { headers: userHeaders });
+        const res = await fetch("/api/portal/tasks");
         if (res.ok) {
           const data = await res.json();
           setTasks(Array.isArray(data) ? data : data.tasks || []);
@@ -92,7 +93,7 @@ export default function PortalPage() {
         setIsRefreshing(false);
       }
     }, 15_000);
-  }, [userHeaders]);
+  }, []);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -116,8 +117,8 @@ export default function PortalPage() {
   useEffect(() => {
     if (!authChecked || !userName) return;
     Promise.all([
-      fetch("/api/portal/tasks", { headers: userHeaders }).then((r) => r.json()),
-      fetch("/api/portal/versions", { headers: userHeaders }).then((r) => r.json()),
+      fetch("/api/portal/tasks").then((r) => r.json()),
+      fetch("/api/portal/versions").then((r) => r.json()),
     ]).then(([t, v]) => {
       setTasks(t);
       setVersions(v);
@@ -128,11 +129,11 @@ export default function PortalPage() {
       }
       setLoading(false);
     });
-    fetch("/api/assignees", { headers: userHeaders })
+    fetch("/api/assignees")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setAssignees(data); })
       .catch(() => {});
-  }, [authChecked, userName, userHeaders]);
+  }, [authChecked, userName]);
 
   useEffect(() => {
     const params = new URLSearchParams();

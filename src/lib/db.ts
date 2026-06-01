@@ -94,6 +94,16 @@ async function ensureSchema() {
       password   TEXT DEFAULT '',
       created    TEXT NOT NULL DEFAULT (date('now'))
     );
+    CREATE TABLE IF NOT EXISTS sessions (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash  TEXT NOT NULL UNIQUE,
+      created     TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      expires_at  TEXT NOT NULL,
+      last_used   TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, expires_at);
   `);
   // Migration: add images column to comments if missing
   try {
@@ -763,3 +773,89 @@ export async function markAllNotificationsRead(userName: string): Promise<number
   });
   return r.rowsAffected;
 }
+
+// ── Sessions ──
+
+const SESSION_TTL_HOURS = 8;
+const SESSION_RENEW_THRESHOLD_HOURS = 2;
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export async function createSession(userId: number): Promise<{ token: string; expiresAt: string }> {
+  await init();
+  const db = getClient();
+  await db.execute({ sql: "DELETE FROM sessions WHERE user_id = ?", args: [userId] });
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const tokenHash = await sha256Hex(token);
+  const r = await db.execute({
+    sql: `INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, datetime('now', '+${SESSION_TTL_HOURS} hours', 'localtime')) RETURNING expires_at`,
+    args: [userId, tokenHash],
+  });
+  return { token, expiresAt: r.rows[0].expires_at as string };
+}
+
+export async function findSessionByToken(rawToken: string): Promise<{ userId: number; expiresAt: string } | null> {
+  await init();
+  const db = getClient();
+  const tokenHash = await sha256Hex(rawToken);
+  const r = await db.execute({
+    sql: "SELECT user_id, expires_at FROM sessions WHERE token_hash = ? AND expires_at > datetime('now', 'localtime')",
+    args: [tokenHash],
+  });
+  if (r.rows.length === 0) return null;
+  return { userId: r.rows[0].user_id as number, expiresAt: r.rows[0].expires_at as string };
+}
+
+export async function destroySession(rawToken: string): Promise<boolean> {
+  await init();
+  const db = getClient();
+  const tokenHash = await sha256Hex(rawToken);
+  const r = await db.execute({ sql: "DELETE FROM sessions WHERE token_hash = ?", args: [tokenHash] });
+  return r.rowsAffected > 0;
+}
+
+export async function destroyAllSessionsForUser(userId: number): Promise<number> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({ sql: "DELETE FROM sessions WHERE user_id = ?", args: [userId] });
+  return r.rowsAffected;
+}
+
+export async function renewSessionIfExpiring(rawToken: string): Promise<void> {
+  await init();
+  const db = getClient();
+  const tokenHash = await sha256Hex(rawToken);
+  const r = await db.execute({
+    sql: "SELECT (julianday(expires_at) - julianday('now')) * 24 as hours_left FROM sessions WHERE token_hash = ?",
+    args: [tokenHash],
+  });
+  if (r.rows.length === 0) return;
+  const hoursLeft = r.rows[0].hours_left as number;
+  if (hoursLeft < SESSION_RENEW_THRESHOLD_HOURS) {
+    await db.execute({
+      sql: `UPDATE sessions SET expires_at = datetime('now', '+${SESSION_TTL_HOURS} hours', 'localtime'), last_used = datetime('now', 'localtime') WHERE token_hash = ?`,
+      args: [tokenHash],
+    });
+  } else {
+    await db.execute({
+      sql: "UPDATE sessions SET last_used = datetime('now', 'localtime') WHERE token_hash = ?",
+      args: [tokenHash],
+    });
+  }
+}
+
+export async function getUserRole(userId: number): Promise<{ name: string; role: string } | null> {
+  await init();
+  const db = getClient();
+  const r = await db.execute({ sql: "SELECT name, role FROM users WHERE id = ?", args: [userId] });
+  if (r.rows.length === 0) return null;
+  return { name: r.rows[0].name as string, role: r.rows[0].role as string };
+}
+
