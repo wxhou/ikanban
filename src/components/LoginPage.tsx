@@ -63,16 +63,26 @@ export default function LoginPage({ users, onLogin }: LoginPageProps) {
       return;
     }
     try {
-      const res = await fetch("/api/auth/set-password", {
+      const setRes = await fetch("/api/auth/set-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: selectedUser.name, password }),
       });
-      if (res.ok) {
+      if (!setRes.ok) {
+        const data = await setRes.json().catch(() => ({}));
+        setError(data.error || "设置失败");
+        return;
+      }
+      // set-password only persists; chain a verify to mint a session cookie
+      const verifyRes = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: selectedUser.name, password }),
+      });
+      if (verifyRes.ok) {
         onLogin(selectedUser.name);
       } else {
-        const data = await res.json();
-        setError(data.error || "设置失败");
+        setError("密码已设置，请重新登录");
       }
     } catch {
       setError("网络错误，请重试");
