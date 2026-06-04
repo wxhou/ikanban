@@ -64,6 +64,8 @@ export default function PortalPage() {
   }, [authChecked, userName]);
 
   useEffect(() => {
+    // URL is the source of truth on mount; lazy init would cause SSR hydration mismatch.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const params = new URLSearchParams(window.location.search);
     const v = params.get("v");
     const a = params.get("a");
@@ -74,6 +76,7 @@ export default function PortalPage() {
     if (d) setDateRange(d);
     if (ds) setDateRangeStart(ds);
     if (de) setDateRangeEnd(de);
+    /* eslint-enable react-hooks/set-state-in-effect */
     if (v) {
       const vid = Number(v);
       if (!isNaN(vid)) setSelectedVersionId(vid);

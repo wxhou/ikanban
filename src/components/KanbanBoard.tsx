@@ -33,7 +33,9 @@ export default function KanbanBoard({ initialTasks: tasks, onEditTask, onViewTas
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const prevStatusRef = useRef<{ taskId: number; oldStatus: TaskStatus } | null>(null);
   const tasksRef = useRef(tasks);
-  tasksRef.current = tasks;
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
   const toast = useToast();
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -58,6 +60,8 @@ export default function KanbanBoard({ initialTasks: tasks, onEditTask, onViewTas
   }, []);
 
   useEffect(() => {
+    // URL is the source of truth on mount; lazy init would cause SSR hydration mismatch.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const params = new URLSearchParams(window.location.search);
     const f = params.get("f");
     const p = params.get("p");
@@ -65,6 +69,7 @@ export default function KanbanBoard({ initialTasks: tasks, onEditTask, onViewTas
     if (f) setFilter(f);
     if (p) setPriorityFilter(p);
     if (q) setSearch(q);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {

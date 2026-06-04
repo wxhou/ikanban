@@ -35,7 +35,10 @@ export default function LoginPage({ users, onLogin }: LoginPageProps) {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
+    // Client-mount detection; useEffect is the canonical pattern, can't be replaced without SSR mismatches.
+    /* eslint-disable react-hooks/set-state-in-effect */
     setMounted(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const handleUserClick = async (user: User) => {
