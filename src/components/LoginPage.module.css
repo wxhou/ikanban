@@ -79,7 +79,7 @@
 /* ── Layout ── */
 .layout {
   display: flex;
-  width: 900px;
+  width: clamp(320px, 90vw, 900px);
   min-height: 540px;
   background: #fff;
   border-radius: 16px;

@@ -188,9 +188,7 @@ export default function TaskModal({ task, onSave, onDelete, onClose, readOnly, v
           });
         } catch { /* ignore */ }
       }
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("新评论", { body: `${currentUser}: ${commentText.trim().slice(0, 50)}` });
-      }
+      toast.show("评论已发送", "success");
     } catch (err) {
       toast.show("评论发送失败", "error");
     }

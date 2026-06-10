@@ -230,7 +230,7 @@
   line-height: 1;
 }
 
-@media (max-width: 768px) {
+@container (max-width: 720px) {
   .topnav {
     height: auto;
     flex-wrap: wrap;

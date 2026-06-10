@@ -2,6 +2,7 @@
   padding: var(--space-6);
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .header {
@@ -25,14 +26,14 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr clamp(280px, 26vw, 340px);
   gap: var(--space-5);
 }
 
@@ -378,7 +379,7 @@
 
 .analyticsGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--space-5);
 }
 
@@ -388,21 +389,6 @@
 
 .analyticsGrid2 {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--space-5);
-}
-
-@media (max-width: 1200px) {
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .analyticsGrid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 640px) {
-  .stats { grid-template-columns: 1fr; }
-  .analyticsGrid { grid-template-columns: 1fr; }
-  .analyticsGrid2 { grid-template-columns: 1fr; }
 }

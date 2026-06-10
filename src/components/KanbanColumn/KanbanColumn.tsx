@@ -104,6 +104,23 @@ const KanbanColumn = memo(function KanbanColumn({
         <span className={`${styles.dot} ${styles[`dot_${col.id}`]}`} />
         <span className={styles.colTitle}>{col.label}</span>
         <span className={styles.count}>{tasks.length}</span>
+        {(() => {
+          const subTotals = tasks.reduce(
+            (acc, t) => {
+              const subs = t.subtasks || [];
+              acc.total += subs.length;
+              acc.done += subs.filter((s) => s.done).length;
+              return acc;
+            },
+            { total: 0, done: 0 },
+          );
+          if (subTotals.total === 0) return null;
+          return (
+            <span className={styles.subCount} title="子任务完成度">
+              {subTotals.done}/{subTotals.total}
+            </span>
+          );
+        })()}
       </div>
       <div
         className={styles.body}

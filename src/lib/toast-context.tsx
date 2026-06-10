@@ -2,7 +2,14 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
-type ToastType = "success" | "error" | "info";
+type ToastType = "success" | "error" | "warning" | "info";
+
+const TOAST_STYLES: Record<ToastType, { bg: string; icon: string }> = {
+  success: { bg: "#16a34a", icon: "✓" },
+  error: { bg: "#dc2626", icon: "✕" },
+  warning: { bg: "#d97706", icon: "!" },
+  info: { bg: "#2f6feb", icon: "ℹ" },
+};
 
 export interface ToastAction {
   label: string;
@@ -57,14 +64,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               padding: "10px 16px", borderRadius: 8,
               fontSize: 14, fontWeight: 500,
               color: "#fff",
-              background: t.type === "success" ? "#16a34a" : t.type === "error" ? "#dc2626" : "#2f6feb",
+              background: TOAST_STYLES[t.type].bg,
               boxShadow: "0 4px 16px rgba(0,0,0,.15)",
               animation: t.leaving ? "toastOut .3s ease forwards" : "toastIn .3s ease",
               pointerEvents: "auto",
               whiteSpace: "nowrap",
             }}
           >
-            <span>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}</span>
+            <span>{TOAST_STYLES[t.type].icon}</span>
             <span>{t.message}</span>
             {t.action && (
               <button

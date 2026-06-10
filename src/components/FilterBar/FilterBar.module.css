@@ -208,7 +208,7 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 768px) {
+@container (max-width: 720px) {
   .bar {
     flex-wrap: wrap;
     padding: var(--space-2) var(--space-3);

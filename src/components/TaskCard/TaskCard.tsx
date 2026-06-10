@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, memo } from "react";
-import type { Task } from "@/lib/types";
-import { IconCalendar, IconWarning, IconCheckSquare, IconComment, IconSend } from "@/components/Icons";
+import type { Task, Subtask } from "@/lib/types";
+import { IconCalendar, IconWarning, IconCheckSquare, IconComment, IconSend, IconPlus, IconTrash } from "@/components/Icons";
 import { getInitials, getAssigneeColor, formatDate, isOverdue, overdueDays, isDueSoon } from "@/utils";
-import { createComment } from "@/api";
+import { createComment, createSubtask, updateSubtask, deleteSubtask } from "@/api";
 import styles from "./TaskCard.module.css";
 
 const priorityColor: Record<string, string> = {
@@ -64,6 +64,8 @@ const TaskCard = memo(function TaskCard({
   const commentCount = (task.comments || []).length;
   const [showComment, setShowComment] = useState(false);
   const [commentText, setCommentText] = useState("");
+  const [showSubtasks, setShowSubtasks] = useState(false);
+  const [subtaskText, setSubtaskText] = useState("");
   const didDrag = useRef(false);
   const isVerifying = task.status === "verifying";
 
@@ -94,6 +96,36 @@ const TaskCard = memo(function TaskCard({
       console.error("Failed to add comment:", err);
     }
   }, [task.id, task.title, task.assignees, commentText, onCommentAdded, currentUser]);
+
+  const handleToggleSubtask = useCallback(async (sub: Subtask) => {
+    try {
+      await updateSubtask(task.id, sub.id, { done: !sub.done });
+      onCommentAdded?.();
+    } catch (err) {
+      console.error("Failed to toggle subtask:", err);
+    }
+  }, [task.id, onCommentAdded]);
+
+  const handleAddSubtask = useCallback(async () => {
+    const text = subtaskText.trim();
+    if (!text) return;
+    try {
+      await createSubtask(task.id, text);
+      setSubtaskText("");
+      onCommentAdded?.();
+    } catch (err) {
+      console.error("Failed to add subtask:", err);
+    }
+  }, [task.id, subtaskText, onCommentAdded]);
+
+  const handleDeleteSubtask = useCallback(async (subId: number) => {
+    try {
+      await deleteSubtask(task.id, subId);
+      onCommentAdded?.();
+    } catch (err) {
+      console.error("Failed to delete subtask:", err);
+    }
+  }, [task.id, onCommentAdded]);
 
   return (
     <div
@@ -164,12 +196,68 @@ const TaskCard = memo(function TaskCard({
         ))}
       </div>
       {subTotal > 0 && (
-        <div className={styles.progressWrap}>
-          <span className={styles.progressLabel}><IconCheckSquare /> {subDone}/{subTotal}</span>
-          <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{ width: `${Math.round((subDone / subTotal) * 100)}%` }} />
+        <>
+          <div
+            className={styles.progressWrap}
+            onClick={(e) => { e.stopPropagation(); setShowSubtasks(!showSubtasks); }}
+            role="button"
+            tabIndex={0}
+            title={showSubtasks ? "收起子任务" : "展开子任务"}
+          >
+            <span className={styles.progressLabel}><IconCheckSquare /> {subDone}/{subTotal}</span>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: `${Math.round((subDone / subTotal) * 100)}%` }} />
+            </div>
           </div>
-        </div>
+          {showSubtasks && (
+            <div className={styles.subtaskList}>
+              {subtasks.map((sub) => (
+                <div
+                  key={sub.id}
+                  className={`${styles.subtaskItem} ${sub.done ? styles.subtaskDone : ""}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    className={styles.subtaskCheck}
+                    checked={sub.done}
+                    onChange={() => handleToggleSubtask(sub)}
+                  />
+                  <span className={styles.subtaskText}>{sub.text}</span>
+                  <button
+                    className={styles.subtaskDelete}
+                    onClick={() => handleDeleteSubtask(sub.id)}
+                    title="删除子任务"
+                  >
+                    <IconTrash />
+                  </button>
+                </div>
+              ))}
+              <div className={styles.subtaskAdd} onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="text"
+                  className={styles.subtaskAddInput}
+                  placeholder="添加子任务…"
+                  value={subtaskText}
+                  onChange={(e) => setSubtaskText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSubtask();
+                    }
+                  }}
+                />
+                <button
+                  className={styles.subtaskAddBtn}
+                  onClick={handleAddSubtask}
+                  disabled={!subtaskText.trim()}
+                >
+                  <IconPlus />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
       <div className={styles.footer}>
         <div className={styles.meta}>
@@ -205,24 +293,45 @@ const TaskCard = memo(function TaskCard({
         </div>
       </div>
       {showComment && (
-        <div className={styles.quickComment}>
-          <textarea
-            className={styles.quickCommentInput}
-            placeholder="快速评论…"
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleAddComment();
-              }
-            }}
-            autoFocus
-          />
-          <button className={styles.quickCommentSend} onClick={handleAddComment}>
-            <IconSend />
-          </button>
-        </div>
+        <>
+          {(task.comments && task.comments.length > 0) && (
+            <div className={styles.commentList}>
+              {task.comments.map((c) => (
+                <div key={c.id} className={styles.commentItem}>
+                  <div className={styles.commentHead}>
+                    <span
+                      className={styles.commentAvatar}
+                      style={{ background: getAssigneeColor(c.user) }}
+                    >
+                      {getInitials(c.user)}
+                    </span>
+                    <span className={styles.commentUser}>{c.user}</span>
+                    <span className={styles.commentTime}>{formatDate(c.created)}</span>
+                  </div>
+                  <div className={styles.commentText}>{c.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className={styles.quickComment}>
+            <textarea
+              className={styles.quickCommentInput}
+              placeholder="快速评论…"
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAddComment();
+                }
+              }}
+              autoFocus
+            />
+            <button className={styles.quickCommentSend} onClick={handleAddComment}>
+              <IconSend />
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

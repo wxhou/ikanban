@@ -71,6 +71,7 @@ html {
 
 body {
   min-height: 100%;
+  container-type: inline-size;
 }
 
 button {

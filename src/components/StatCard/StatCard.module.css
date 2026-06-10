@@ -33,7 +33,7 @@
 }
 
 .value {
-  font-size: 40px;
+  font-size: clamp(32px, 4vw, 40px);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -60,10 +60,4 @@
 
 .warn {
   color: var(--danger);
-}
-
-@media (max-width: 640px) {
-  .value {
-    font-size: 32px;
-  }
 }

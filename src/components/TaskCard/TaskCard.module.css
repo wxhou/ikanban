@@ -320,7 +320,6 @@
   gap: var(--space-1);
   align-items: flex-end;
 }
-
 .quickCommentInput {
   flex: 1;
   padding: var(--space-1) var(--space-2);
@@ -369,6 +368,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background .15s var(--ease-standard);
+}
+
+.progressWrap:hover {
+  background: var(--bg);
 }
 
 .progressLabel {
@@ -403,4 +410,192 @@
 .selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent), transparent 70%);
+}
+
+.commentList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg);
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.commentItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commentHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.commentAvatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.commentUser {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.commentTime {
+  color: var(--muted);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+.commentText {
+  font-size: 12px;
+  color: var(--fg);
+  line-height: 1.5;
+  word-break: break-word;
+  padding-left: 24px;
+}
+
+.subtaskList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--bg);
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.subtaskItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background .15s var(--ease-standard);
+}
+
+.subtaskItem:hover {
+  background: color-mix(in oklab, var(--surface), var(--fg) 5%);
+}
+
+.subtaskCheck {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.subtaskText {
+  flex: 1;
+  font-size: 12px;
+  color: var(--fg);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.subtaskDone .subtaskText {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.subtaskDelete {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, background .15s, color .15s;
+}
+
+.subtaskItem:hover .subtaskDelete {
+  opacity: 1;
+}
+
+.subtaskDelete:hover {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+.subtaskDelete svg {
+  width: 12px;
+  height: 12px;
+}
+
+.subtaskAdd {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 2px;
+}
+
+.subtaskAddInput {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--surface);
+  color: var(--fg);
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+}
+
+.subtaskAddInput:focus {
+  border-color: var(--accent);
+}
+
+.subtaskAddBtn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border: none;
+  cursor: pointer;
+  transition: background .15s var(--ease-standard);
+}
+
+.subtaskAddBtn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.subtaskAddBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.subtaskAddBtn svg {
+  width: 12px;
+  height: 12px;
 }
