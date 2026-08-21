@@ -53,3 +53,23 @@ data/*.db-wal
 # screenshots
 *.png
 *.jpg
+
+# playwright
+/playwright/
+/test-results/
+/playwright-report/
+
+# toolchain / runtime noise (local only, not project source)
+.codegraph/
+.opencode/
+.dsh/
+.omp/
+.pi/
+.mcp.json
+opencode.jsonc
+AGENTS.md
+
+# local-only openspec drafts (not part of shipped change)
+openspec/changes/in-app-notifications/
+openspec/specs/responsive-layout/
+openspec/changes/archive/2026-06-04-responsive-container-queries/
