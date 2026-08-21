@@ -76,6 +76,7 @@
   border-radius: 5px;
   transition: all var(--motion-fast) var(--ease-standard);
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .pillBtn svg {
